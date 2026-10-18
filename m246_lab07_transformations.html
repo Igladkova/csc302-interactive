@@ -1,0 +1,1461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lab 7 demos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a header, a wrapping row of module tabs, then the active module: plot column (left, wide) and
+   control column (right); the description sits under the plot. One column on phones.
+   Same visual language as the Ch 6-8 course tools (Okabe-Ito palette, Spline Sans + JetBrains Mono). */
+:root {
+  --bg: #F6F8FB; --surface: #FFFFFF; --ink: #1F2433; --muted: #5B6478; --line: #D9DEE7; --grid: #E8ECF2; --focus: #0072B2;
+  --exact: #1F2433; --err: #D55E00; --hl: #FFF3D6;
+  --c1: #0072B2; --c2: #E69F00; --c3: #009E73; --c4: #CC79A7; --c5: #56B4E9; --c6: #D55E00; --c7: #7A5195;
+  --display: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --body: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --err: #FF8A4C; --hl: #3A3220;
+  --c1: #56B4E9; --c2: #F5B935; --c3: #2DC79A; --c4: #E39BC4; --c5: #9ED8F6; --c6: #FF8A4C; --c7: #B79AE0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --err: #FF8A4C; --hl: #3A3220;
+  --c1: #56B4E9; --c2: #F5B935; --c3: #2DC79A; --c4: #E39BC4; --c5: #9ED8F6; --c6: #FF8A4C; --c7: #B79AE0; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body) }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 40px; display: grid; gap: 16px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px }
+h1 { font: 700 1.5rem/1.15 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+h2 { font: 700 1.15rem/1.2 var(--display); margin: 0; text-wrap: balance }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem }
+a { color: var(--focus) }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px }
+nav.tabs button { font: 500 0.88rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer }
+nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.module { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0 }
+.plots { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-width: 0 }
+.plotbox { min-width: 0; grid-column: 1 / -1 }
+.plotbox.half { grid-column: auto }
+.ctrl > .matrix, .btns > .ctrl { justify-self: start }
+.plotbox .cap { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+canvas { display: block; width: 100%; max-width: 100%; border-radius: 6px; touch-action: none }
+.ctrls { display: grid; gap: 12px; align-content: start }
+.ctrl { display: grid; gap: 4px }
+.ctrl > label, .ctrl .lab { font-size: 0.88rem; display: flex; justify-content: space-between; gap: 10px }
+.ctrl .val { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.ctrl input[type=range] { width: 100%; accent-color: var(--focus) }
+select, input[type=number], input[type=text] { font: inherit; color: inherit; width: 100%; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg) }
+.btns { display: flex; flex-wrap: wrap; gap: 8px }
+button.b { font: 600 0.9rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 13px; cursor: pointer }
+button.b.primary { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem }
+.check input { accent-color: var(--focus); margin: 0 }
+.matrix { display: inline-grid; gap: 4px; font-family: var(--mono) }
+.matrix input { width: 5.4em; padding: 4px 5px; text-align: right; font-family: var(--mono); font-size: 0.85rem }
+.readout { font-family: var(--mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; overflow-x: auto; white-space: pre; line-height: 1.45; max-height: 360px; overflow-y: auto }
+.readout .hl { background: var(--hl) }
+.readout table { border-collapse: collapse }
+.readout td, .readout th { padding: 1px 8px; text-align: right; white-space: nowrap }
+.readout th { color: var(--muted); font-weight: 600 }
+.desc { font-size: 0.92rem; max-width: 75ch }
+.desc p { margin: 0 0 8px }
+.desc .ref { color: var(--muted); font-size: 0.85rem }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted) }
+.legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; background: var(--c) }
+footer { font-size: 0.8rem; color: var(--muted) }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+@media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
+@media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
+
+.readout.code { color: var(--ink); background: var(--hl) }
+.plotbox .cap { text-transform: none; letter-spacing: 0; font-size: 0.85rem }
+
+</style>
+</head>
+<body>
+<script>
+/* 160 x 160 RGB astronaut image (skimage.data.astronaut, NASA, public domain), the same picture as the Lab 3 notebooks. */
+const IMG_ASTRONAUT = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCACgAKADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDwn9qDxZ4S8ZfEuw1TwrfSpZ2pa0a0a2EcUIDnMke3hlY5PrxXpnwh0bwjpHh/wvrema5FqNxJNNpckwU2+8O28rsblihx+BNfL3iW2kGh207IwBU7SRjIB6j1puma/qlimmSw3UojsLgXsEWflSTIJYe52gV6uIwTv7KErW1/M1jqfpIbERy/dxmp4oQrYNP0nVbfXPDGn6zbsrQ3ltHcKR/tKD/Wh5lVsL1rxFV01G4akVwm5wCpOKv2MBSDcQBntSWhidh5gya14pLZSBis+a7LtYZHbRyxAyDmnXV3HaWDySyRRRIMvJIwVVHuTWb4i8UaL4et0kvZsSSHEcSn5nP09K+cfij4m8Z+Jfi7oGmaUIjo0cTTyQxy4QsSfmZj8pYAcduSKzq11TT7lwg5M95/4TXRryXyNIabV5hnK2KblU+jOcKv4mtdfFmj6SkI1lLnTHlOMzpuVT7suRj3rzDws8VrPHc3730MycN56mNF9iAAPy/OovFGvXms3It7HT7K7h3bWlhu8sD7R8kD/gWfavOWZVL3sdH1eJ7cbu2ubdLmzuobiFxlJIXDK30IqMySs/BwK+XtI8Taj4X8XGHS7u8i2gyTW8rAxuRyUI+nIPf+f0F4G8V2HjrwiNYsgsckbmG5gBz5Ug5/Iggg+hrvw+MjX02ZjUpuBuuVQqzLlicACrtjK5mCldopkUYZQP4hTWmeC4Cjhq6LtGZeubBLtiQDivHvjfdnQPA62sHyTX8vkqRwdgGW/wAPxr2O3vQwO44NeK/GvUNKh8eaTa+IrCW+tIbO6zbRzGMiVo/3bZ9iQffFcePk1h5crtfS/rob0HeaR8v6Z4pm8IfEzTNbEhWDzBBdrnhoWODn6cH8K+uJLRHiDhtwYZDeo7V8kfGpNAu9dEvhe1+z2Rs4VKYxmVYV8xvxfJr618MCeT4X+Fb255kvdKhuBnqRtA5/nXPlCtSdO97GmLfvKXcx9U0xZIyQpyK47ULOSBjlSK9SmijkhZn+XHauL16EMd0YNesoHG5HzH8fdZ8P+K/Ft1rfhi/afTZ1AgtGtvs5s1VcCIL029wR61sR6R4Bvv2aLDWdNbTW8UmxNrGdQkETyLG37woh4MgB2gntivLtVjljkubSaN0ZOdrggjI9DXIW087otnLK7RwlvLjJyEycnA96+ixWGtOnGMrJfoZrc+7v2avEsmu/Aq0sJG3y6XM9kc9do+ZP/HWH5V6hMoSbLZ968R/Zm8JeIPCPhi/v9bj+zRasY5re1YfOu0Ebm9MgjjrxXuDxPNL5mOvY187ioL20uXa5snYswfKgcA4NTLcMAWIyFGcU6GNRAFPWl8k7xtHU4xWPKwufM+r3eoeM5n1o3e7YzPP82CijnaP9kA44q+l+mteDoJ7fU7i2t2PlW7LCpDbD6+me1ea6t4oEN9rmi2qmzmeWWBwD8mA5BAP4YxX0X8PZvC/hT4F6TbeNJdPhhktzcyC6tpJmbJ3khUHygbhlj0rwFzzbuelTjFbnHeGdUvbW7K3t6qFV/eYJ2kjsc8gd+tdJNrXhqRJri+neSPBUPBJ5bxtjqT0bt/kV614e0f4a+KtK86DQ7WQRjzfMTcMoeR94BhwRjIryzx54K+D2pS3VlaaiukXc5ISX+0VgDuByAHBBx3p+xkvMtwTPmvxTqFxqXxBL2+tRNbQFXEryCMToDlQeOvbHWvaP2aNeubb4v6zpd1O0VprNo1xBbMBjzIm3HGOmFZh+navnjxho2pfD/wARWto9291DNKYgxVCyhSCpDchh83UfpXpvwDS7vP2gvD86pdRNZid7htp8vyREwIY+5ZQPrW9CLhUg11OSqtGj7kkit1O4Ehu2Kzbza7bw+CoxzTGvInuNytkDjiobpTcjhiAfSvZZzJFrSwZdRgjc/K0gBPtmvHP2jZbW1+KmmmMWs0xtJA0M2GOCMBiuc9+D7V63pjtbalbhyWHmLz6c188/tW/C7TbPRNU+M+nXd++uvcrE81vfLNA0PCbCoHy4HGBUV6DrUHBeX4BCp7OopM8Z1uGHVdesoXhjiSbEJWLpjaqk/U9T719weLNOg0ebwvpemQbLW1gW1C9ljEYA/kK/PrTNVb7Xpd31TzUYEnPBK1+h3jf994r8PorEhsHjuNma4cmi4xnfuv1N8c9YnO3kWY/u+1c1eWYlY4BzXb3lvuUoFrnL6J0yqjHrXuI853PiP4pXmnal8aNd1DStYbVbO/kNxFdNEYjhhkKVPQr0444FZ/wQ0/w9cfGiyl8SxK9qXP2dZPuGb+Hd6j+uKdrHg/xBHo1l4nutOuINHud0UV0RgSMPT29+9Y7KLW/UxDYEKldvGPpXoZti4w/2ek9V1/Q+iyzJ/bw9vUdo7L/P5H6GMirBGygYUg8elXh8qgAZryP4NfEQeLfDB0fU5QdWslCsSeZk6B/r617Hp0Ynso3wckc14UXzannYvDSw1V057obFuZsmrsSZbFCRBHxjmtCKACPzGKoqjLM3AA+taxVzlbseBfFz9ndvEniWLxb4Xl8m5lfN5Zk4R2P/AC0T0Y9x3Jz617z4X0XRpfBEVpqVtassFt5T/aFXBCjBBDAjt0pt9438BaXH5epeJ9NiPQo0u7+QNZWk2+k+KNKurjS9UjubUyySQtG5aGYBjgMByV6ZHtXBjKPspKolud2EqKXuyNMRWUVndf2JCTBNCQrKCc8Yzn0xgD2xXK6F4d8M+J/Ddr9psYZbuxMiK4UCSJnBViP95fzrof7JbUfDktxqMdla3e3ypTBey24UgHKglCGU9vqK4nwdpl3aX2s3UX2az060XCTLO0zz+oOQMDoB1J9u/E1KPvHouMWj5y/aN0nR9MTRtN0+3IFtP5Q2gk4wf8RgV7b8APhTqfhy0v8Axr4khmtNU1eGOKHT5eDbQAAkuOzuwBI7ADPJNdj8OPBmk65Lc+Ltet/tVxFen7KJQCmUHL4xyQxwOe1epNEJCSOpNd2GovlU5fI8uvNc1kYB050BKrj6UqwvH1JOa3FiZTtY4BqYWseOQDXUYmTp1ut3qcNtNAHVzyhONw9K4T40eB/D9t4C1C3j0tbPTdREQm0+2lKwIykncoHRjkZPfFeqaVCo8R23ThjjH0rj/j+fL+G+8f3wK6KXwM56m5+aekzj7HbwA8QXTQjnoFfA/TFfo3d6gbzVPB0x+ZjFtYe4QivzK0S5/wCJjdQk/dvS/wCbV+jOkXBm1nwrGDyC36x5riw8PZzqI3rS5oQZ2l2dxJUYNc3qKbgwxz611lxEDnNc/eQ5Lbq7IyOdq5Q+I/hDQ7nwWnhVrNI9NW1+zxxqP9WB90j3Bwa+C/Gfh2+8L+Kb3SNQUiWHG18YEiZ+Vh7EV+hnxAZvKtHPQlQfxNeA/HPwMPE3hV9XsYgdS0+MsNo5lj6sv4YyKyxCvPmPocmxrov2Uvhl+DPnrwzr2oeG/ENrremSFZ4CGxnh17qfYivu34c+ILPxT4Lt9XsiDHKSQM8r6g+4Oa+ALHBKL6rj9K+oP2T/ABAsmn6z4UlfM0UovIVJ/gb5Wx+IH51jRlary9z2+I8GqmGWIS1j+R9Im3jjQ3EzLGg6luBXxb+0l+0FrSeJpvB/hK5a3iiUGa4A+4D0AHTcRgknoCAOcmvpD4zeKR4b0u3gluU8hDBqFzEpIaOBJyGc46gnb14+Q14b4b+F+gJ4s8V/EzXo473+ylNzb20mHU3GAqyFD99UwCB7k+ld7kop23Pg7O1z5I8QWOv213E/iXUZzdTxiYx3EjvKgPIDg/dOOcV96fssJdJ+zDo+paafPNvPcJNEODIvmsePRhn8ePavhPxhFqc3iy5udfmxdyEOy+Z5pIbnO/8Ai69frW94A+L3xA+G0t1b+EPEl1pkMzBpbYBZYZDjGTG4K59wAa48TTdaCSZrh6ns5XZ+l954o8F3GnkSa5aW8ykl4pZPKdPUFWIINeSa544t51udM8Pv/oZPM4+4T/ez3r5evf2mPGuooP8AhItI8La3z9660wRyfg8ZUg1z3ir48+JNe0q402y0nTdItriMxSeQGkfaRghSx44z2zXD9TqSdjuljo2sfqDoNhYW3hixi0mSGWxSFVjeFtytxyc+pOSfc1ejG1iCK/OH9n39pPxF8O9ZttB1+7kvdAnYIBcMf3XYfN6dg38PfI4H6M6LqGneI9FttY0q4E1pOMg9ChHVWHZgeCP6V60o2VlscEWpajZnIkAHNE022Ic8+lajWkIQs3X1rEu4/nzGelQ46XK5tS3ork69bsQfvY+nFcl+0EM/CtzjpICe/Ga7rw/pkkm3UbklEU/ul6bj/ePtXJ/GpN/w/IJGBJ3raEWoO5lUd5H5ZLoOpadJLrk1jdw2z6i9szyxMig/eTkjvz+VfoB4TmEvijwuD0Iz/wCQzXQt4H0f4nfCTUfDGq4KzRQyIf7rbPlb2IPeuJ8Li/0T4m6H4b1lDHfWchiJIwJlCEBx9axlTa9/uJS2j2Pab94os5I9xWLeeVJD+76dyabq0kolcoxPPNYE+qskRUE89qzTLsRjxfpnj/4W2viPSpd3zqJYifmicYDKR9aguESWyuFZQcRscH6V8mfD7x9eeC9V++76Vcjbd245GN3Dgf3hX1fpd7a3+hteQzpLHPbbkdTkMDzn8qmnV9pvue9muWvA1bR+F6r/AC+R8leP/CEnhfxKl7bxn+zr/wDfwMBwjfxJ+B6e1df+z3ba9Y/FyLxDYafJJp0EUsN1O+Ujwy8Lu7tkLwK9ci0HSfFPhOfR9btlngSVWUFtrLtORg9u4+ma6KGO30Wzt7aG3jtrNP3apEgRYgehAHSvCx2P9jPlpvVfgfXZe5YvB+zrR309V3PMPjvpNxrvii01+6vRHHKq2V2zbmSG2ZiJMJnDDDIcH+7kc1m+AfFk/hXxDc+FPECvJNpgSKZ3XK3MBXMUv12YB9QAw749J8R2yX1vLZ3KowaMkBhlXHQg+xyPwb2r538Xpq1nJp+oaTPLqAtblrJEll+ZfLHyruI+Z0JkRSSQygAdCDpk+YOTdKo7t7Hk5/kyjTjiKMdFo1+T/T7joPjv4F8OeIbDUfHmg6LcWd1busN1bgosEjlC4uomHARwCCn94EjGSK+TYmM18zd2r6dsPHfhvxL4ffRdXsBdWjBluNMc+U8ZIKmS1djgMM58tj1+6TnFcl4a/Z08R+OdZn/4Qa802/tkLtK0s6wG2UHgOjEMrHP3SOueSOa+i5r6o+InTcHZnis4Pl7c5wapSHOBXpfjD4P+MtD8Q/2PD4Z12S4iO2YG03KDjIKlM7lxzkZrldS8G6ppttPJO9tmBdzoX2uPX5SAapabmTdxnhzTIdYhubKRmRlAkSQDIj5wSfbkE+wPpX2v+yd8QtUsWTwhrkjjdILJw56SBd0Lj6qCh9cJ6V4z8MvDv2zwHoodtO8p1kkaOBCDhgysZnI5YkgYGQAK7Wxu7LRtM0LV9Ln2310YJPMU4YmO4lEZz6ldv4AUpaXv2NqMeZpH3YZQVwW4qjfb0sZZYLZrh1HyxIQpfnoCeBn3rhPCfxDbU5vsOtiKGTaNt0vyqxPZx0B9xxXorYFuMYPHrWWExNPEQ5oM6Mfgq2DqclVf5MpxeI9QuNdtxc6Nrui2kUbNKZkhe3CqM5ZlckdMVxnjvWR4o+DkmrKht085gYzydqng/iMGsf4yeMx4Z8ItZxykTXgKsiHkxjqB/vHC/nXgOu/G3WvCSz+BPEnhm9h0m4gW6n1aRHYWjPFyqqFwy7ioznjJroc73SON6HqnhD4p6Tpeuw6PHe30cptxC6x6XPcqzjlQGRSM4NdL4l8R+Hdd1/QNTttM1j+0LW7VRdS6VPCgVgVOXZQAMnvXyp+zV448W3fxhbw1rdy8Vtb2TXccLR+W6OoTY2ev3Tn3zXqcWs63cfEXTJNQ8TaxdW7XzZinuiYSCTgbemPSo9paLiwUdUz2i9vAwbAznrXLahcQhiFB3GtG6vNqkL+dcvfSOGLA5HtWCianx/tK2Mj56naK9k+BHxAQaW/hDVZCCoZ7KQnqo5Mf8yK8q1zS7zRLqXR7+Bobu3kZZo3GCGFdR8DtMnu/Edxe21s001tCRH8uQhdsEn8AcfWvNlV9lSlU6o/VcZhKeMcaU9mt/uPolIbVo3RJJV805KBRk1JaMFgk0qW4klD/AOqWReV/HPSuf8jUIHa4ZuY5SjlZASGHVcDvXQ6bJMZBNd2xyoAVxz1718nOSm3J7ns+xhSpqMNlsU0meUx21wxZoGbymY9QRtKn+X/6q57xJpVlcaetyLaKe1cgTQSqCjqSOSPUHBz14B7VrXgkttcuRLxGXV0Y/wAQY4/TimLuk0+eEDc0DuhGO2cj9KwvZmqimr9GeAfEr4VS2SS6/os08sed8kbKHliAHUqOJFA4yMNjrurzDRfEHiPw7dreW9zc3JjOUvLGZhJEPYjDKPY4FfXY0PQLu9a8mtFW+CAFhksAAACOemO4rzfxT8JND1O/uLjTryTT75jvjnQYXPcMowQD/eHfrX0WCzmy5K+vn1+Z8hm3DSlP2uE0fZ7fL+vuOc8KftFeI9N1tb99YF5dnK+dfW5MnPUF0OT9dpr0Gb40pqFndafrvh7QtVe6zJI8txE7ksP70kWeB0HUV5LdfCrxkLOa8i/snVRCOk8S+aevG7qTweNxrU1z4JeOPCt1NDf2Hh+GY2K36GK5mPnRldx2DOMjkdeo4r6CljYzi3CV0v66HyFfK50akY14ct+1v1ZBqXjPRNN0SbSLW4g0qyZTG8FlJlyp6oGH3c9yOfesfw34h1TXPGWmvZr9mtLVlFvH/wA8YlwC5B6fL8oz7+1Q6B8JbqfU/tWsW8pjU7vscS7JJPd2JOxPx3H0HWvXNE8K2lldRwvBbWkfzStBbJgAIMncTye3X1HrXkZjnEIxdKlq393+Z9Fk3DlTnVauuVLpu3+iX9bHp2i3wWwkZwQWAPPdTxXpvwp8UahrXhy4tNRfe1tIfJf1jzjH4Hp7H2ry5bZTazWcfysbc4HcEr/jV34a6wdPtrGVXCqZRb3G7gAPjnP+9trxMuxboV4yvo9Ge/nmAjiMJNW1SuvkaXj6TQLX4322q+Lr2CSzt7aOSysPMXdJKCcs4J+6Oo9SfavJvij8Q9N8Y/EPT9LudYtYtNS4WOXTZrUuLuM4zGXHc+oPFc7+2b4is4PHWhaVZWtuNRS1Nxc3WMuUJwkZ9uCa+cb3xjfX2nw2s1lZL5QGySJCjAjvkHrX28VNptH5XUcIu3U920LX7XTv21tav7fSZWs7m1kt/syNgxJ5aL+Q2/rXTagutN8SrJnsoG8Mb98jQz7JoMElcFjzggfrXyX/AGjfC+a8S7njuG6ypIwY/jnNNlvr2fPnXk8mf78hP8zWvLc5+ZH2/wCJf2gfBHh6/Sw1F7mR2XINrtmA+uDwa5af9o/4eTMcS6koPrbGvkGinyIOdn6H/tNfDUalbt410W3H2y1i/wBOjQf6yLOA+PVe/t9K4v4SW8vhj4MnVsRrNeytOqLy0nO2ME9h7e9fUfiuNJNN1BJACrQhCD39a8rPhHQbW/Fxb25iFlD5a2wiHlkLhlyQeQMfhk14+cUrQfK7XP0DhzHzmlSqK6jt6djldJfUtLsDCsZvZGLmbehYNI5LM3t2/Crll4g1Owu1g1IssEnChkwqewrW0xUFqwhkR3Z2Z1VuQSf/AK1VNU8qSJ45I/NQjlDz+R7GvjJJ7o+4TjJ8skU/HGoi08JPq6ZJtXRmVP4lLAEH2wauWCgazfJ1VnzXAeMJL1/DUmmxTu8EnyAZ++GUhM/RsfjXdNe2ekxT3d9OqDdyzHHtWkIe05VBXbYpJ004vYbd6bE4Mb5QxsTDMv3k/wAR7VRkiNzJHBeqq3Sg+VMo+WQY/wA8VJL4iuJTb+VoN7IlySIS5jiMgA5IV3VsehwM9qbDqEF9O1kYZ7S6jwzWt3GYpEPUEqex9Rwa7sRk2Mw8Pa1aTUfT8+3zOajmGHry9nGab8mc3YvfWguo/Lkd1mZSm3Kn/IxWRexXl88ml3eolVgljNzapId0cLYfYpII7jIyAM12Os3SadaNqTJwFzIv94joK2/hD4BvdXmg8X2qwy30GrpLd+c5USRmMN+OCCMehrPLU1W5e6Z5ueSjHD87WsWmvXoYDf2VD4Rur7ThmOKEnGQAdh6NjvmsHSorx5EudSuC096FIiAwtvbA7guPVjgn2Ar1346eA9M8I/FTw7P4d0a1h8O+IjIb7S4B5UU1xG4c98LvV1JAwDsPTNcX4Fs9U8XIdZ1LwJJYWc8cnl6lDesIpJUO3ygrl9p4bjtjpzXbHI69SU1Sa93u++qOWHE2HjQpzqppy+660Zc0yXz9dnkI+XyVx+BrlPB2rtuvNNlcsr3BkMZXkc5GD+Arb0nXrBdbmsrzw74j0W88qQIL+NTFIygMVDbUP3csODwPevMvBWuWh8fXMl5dRwRRwv5e848xucAetcWJy3E4WfJUjrv3626HrYXMsLjKUqkZe6tHfT8zgv2sLqK++Py3sEyywz6XbSRsrZGDurwyvqvUfhBonxU+JMmt+J/i14e8N28kUNvBaW9pcX1wqpGFxtRQg5BP3j1r1jRf2B/hNrOmxtZ/GTVbqdzhXW0hhDfSN/m/WvuaM7wV9z8bxEbVJJPqfn5RX3T4z/4JveIbS0a48B/EGx1ORVz9l1a1a1Zj6CRC4/MD618k/ET4UfEH4Va8NJ8eeGL3SZXJ8mWQB4ZwO8cq5V/wOR3ArW5jY4yiiimI/XTxVcBtFuJs/KxIz7dK5m91INY3hjcS4Gxwh4cDIU/XnH0rj9A+JK+PfhNBIrJFqVvLHFfRZ6fMAGA9G6/nWj5bvBMwO1N4zj696+aznHPmUI7NH6RkOXOkpurupW+63+ZlXNsUubV4nAnaIuu3/ZPIP1B/SsXVD9lu8jcEYbvl4KZrfup7HR7iSa7vLe2ibPM7gEeu361zOp3+l6m09xp2swTNsJ8sOCeB2x16V8u0fZwk36GH4gaC80J7cEi4kljETKPlY+YuT7dMkVaRk1Hxmm7XjZzWxc29uLNp2kfZuLjoAVXpzkHmuKk8Spa3sUksiSwrIjtkEDBIG76jOa7CfR7aeLUZTpseo3cDre/ZmdsyQhSrlQCCSuQSAQcc8ba+s4MhF4z397Pl9dL/AIfgeHxTKawb9nfdX9Nf1NGzh+Dq3Z07xrbzf2jBdtb3t35c73CgEnzZcSMsi5KrhSDjsMGuh+JVhoulaIo0G+08HT03wyR2LRBolZR5QaQeYHAkQ9WVs1v6/rPwT0r4aWWu65pNz4jS/jhS0sTIiXCgAEhWJDBVYEM+ecgfMa8q8YeIbbxd4cGu6H4fg8MeH9OVbVbQXDym6cspEYkcncVwG2IoA/iY/KK/R6c/a3dVS5LtO/w2+e3muh+aUZTjWi6V76W9RPFOqJe/DpLpeHkZQ4/2u/8AKvXPhdqtxpX7M/ivXLVgJ7ecGJgP4ljj/wDiq+erhLy/XT/ClupMqEPcEchWIyQfpk19C6JBbWH7M93olseLrUNjt6/vY9x/KNq/HsPyxrzlB6JSt+h+mZvDnowhL7Uor8Ts/wBp2ZR8CdD16Fh5ljq1qyP/AHRIrJn6ZK18z6d4q0jwzrGoz6NrWt6c91cvNPY3ti1xZOSWbAETE5BIG4AHFe8ftFX7Xn7G1x5fLYsJ1I9nQ5/nXyz4p1JrLwtp0885tYHs/td/cQgCUrnakUZPR3PGewBPavd+tV6Ndewt76V7+R8phcFh6uCk8Te1OTtbzsZfxc+NniG6uIo08Yvq72xKWghQww2e5CsgVCA24j5SW7dM9vAJdav7iaSa4vJ2L8FAxAI/CpfEWoSajrL3TxRQbh8sMQ+WNew9T9Tyep61j17b/evnnv8AofLV60ofuY6RXTz7s+ov2fv2mvBvwM8C3EFn8P5NW8S30xkutRublUUKMhEQ7WYKAc4GMknJPGNH4tfts+JviZ4Qi8Ojw7pWl26Xcd35sDySSEpnC5Y4wd3Jxnivkyihwvp0OVyvufXPwn/bV8aeD7qCx1S6bVdMBCmy1GQuAP8ApnL95D7HI9q+4tG8V/DD9pL4VXNhJp9tqltLGPtui6go82I/3lx6H7siHj1B4r8ZK9N+FPxc8R/DrxLa3unahPAIXDI6HmP1+qnup4IqOVx22BM679pj9nDU/gf4qj1DTHuL/wAH6lIRYXsgy8D9TbzY43gchv4gCeoIHglfrro2v+Dv2rf2dtY8MaokEF5d24hu4V+b7LcY3Q3Meedu4Bh6YZT7/k3r+iah4b8Val4e1WEw32nXUlpcR/3ZI2KsPzBrSLugkrHt/hfXX0HxvZsZSLSZktrmPPyyRscHP0zmvYLbSL/TtektjfandaQsapaQpOGaHGQTjgtx6nIr55tg1z4lh3cokqZB6dRXv2k+J7HTNDEviGdYbe1LAyOeGU+nc18dm0eWUEt2j9sw9SLlKTWlzrovD2jGbLQ2t1Mesj5mc/i2cVm634Ys7fT2uJbOKQD7oSIJIfoVxVvw/wCMrfWbAXOgaQYdPwSL++HkxsB1KKBuYe5wPepbq+1XW3S205pXVjzcyR+RAPdQPnf8wPevHlC2j3O2FWTd09DxLxrCI5NPa0a7SGG6El3HOAA6ZGMY64I59fwr1GzzqWjWup2c80c0Rys8BKyQuO4788Gnaj4KmvI5LXUtWtJd3ykJAS3PplutN1jU08CaSlxLEXgijCM0S8/7JI7c8fjW1KtUhyez0knpb+twcab5nLVPvt/wxlXkFzPhZdK8NXkqx+WLue3KTYxgE44J5zyDzzRdM9sttfeItWiY2yhLYT4jhgA7on8R98AZ561lQeIfHfjW6/0RYvD1gekkce6Zx6lj0H0qzZ/DjTZr8XOsTXmozOeJbiXfu9zz8o9jXs4rPMbXp+xxFZtdkl+LVvzZ5uHy7C0p+0pUkn3/AMjNsfGOg6TJOdLjutW1K5kZibeMnAzwMnqa7zVfEupWHwA0K3mjutOn1DUJ/NijUSXDLvlIRMcBjgDJ6AmsW20/YZ7PQrCCwjjcxPOqjeMen+e9ey/Cv4Z6P4x8JtZaxc3ZfQmlvopI3BYySA4BLA/Lw3T9O/Bg1GrN06UdWnuyM1nGhShXqv3YyTf4r82ZPxkvpU/Zhh0+WJ4l8mzt2RzuZDx8pPcgivjv4o6+L3VLTR4mZLe2hE0oHdgu1AfoP1Y19T/GPxHaeKf2ZP7UsCi28uvQWpKnO39/hhn2BNfDXiHUpLvxHqN0WyJpnIOf4M5X+n5V9LRw69sqj2Ssj89njv8AZXSWjcm389v1OfnlM1w0h7muu+Ffw31v4tfFjSPAmgNHFd6hIQZ5QSkEaqWeRsc4Cgn34Heua1W7sr3UTPYaYmnQ7EUQRyNIAVRVLZbnLEFj7scYFfXX/BPe68FaR8VPEuueJvEGkaZfx2Edrp8d/cpC0nmOTIybiM4CKD/vV61raI+db5m2zxX45fs7eOPgLqWnReKp9MvLTUjILO8sJ9yybNu4FGAZcbl6jHPU15FX15/wUG8dWniX486P4d028iubXRtMUs8MgdDJMd5wRx90JXyLGu+VVzjJxSQmdv4Q+HuoeI7M3UcbbDyD2xUHifwbd+HLgpKDxX0l8EorCPw0i7Yy+zHI6fWuD+OiW8WoOI2XGTnuR74+tO2hVir+zj8Wrr4bfFDTLyedlsPMEF3Hu4e2cgOP+AnDj3X3qf8AbW8P22ifte63eWm3yNatbbVl2dCZIwrkfV0Y/jXhEVwYLxWRyADyfUY5r2n9ozxNpnj6LwL4m0nUbW9ns/C1lYaoI5lMkFwpc7GQ/MeD1AI5Aznis4qzF0Mq5tbrQtVnttQhaC7gnPmxt1UqelaeuyP4k8Z2lkzkabatuYDkcDJJ9a9r+OngKDxCx1Hw9Dv1azg/0tVHM6Dn8XHb24rxvw79leCaEuftQUKwbrtYYzXg5jH2K9ra7V16Xtr8j9Vy3FQx0F02uvPt8z27wfqlre+Gre6iiiihRMvbuwIUfw598DNdAfEkV1P9gtLK6knf5SkIw4+rHhRXkWieIbHw/wCF7e41O5FvELhbaUBgpdl+7nP8IBLEn0xXo+geOvDclhJdWf29LWNdx1C6gaOJ8+jHG4n2H418zKnLVpaH0HPBO0neXY6e00qO2QiCHZOw+eVm3lfbJ61zHjOTwjommOviLVbW1W4UqftM3zyZ9B1P4CstPiZd+MItZXwhcWWj6Lo1q11qniXU2AigUcBYU6ySM3yqO56etfN3ib4hz+JZ4NM8PaTbxeVKZJdauohLqN6xOd0srZCqMfKigAe9e3gchrV0pS0vsur/AMj5nMeJKWHlyQ96X4f8H+tT9AvhXefADxV8OrKGw8DfaJIY0hv9Ut7aSRIZCMB2uC2/DYzkdOfSsT4geFU8IeKYdOjuJptOvUeSyYkbspjchbHzEBlIPofUZr5v+DM/i5I5fBcHiLSNBuvEVxELbUtTJ/cSKCS0YTo5XI+YEDPBBJNfRHxQ8RW+teONB8OaXei9g0KB5rm4HctEIYwfd8O+PRR6ivUzbA+xouNaNpJbnz2SYqvHHqNNtxk9U3fT/gHmHiG81PT5bDw9ocMZ1bX9UWytnJB8ncoLP7kBa6Hwx8eZvgR4s8SeDfHXh2O7muxavYyWsodIRtJUyk/NIDvDEqeqkAAVwviqDVo/iLpHi23vltYtBkW4tlQBmlmJ5wCQBgY6nnPpXJXvjjXvHPxK0658a3FmLvUUW0lvFSOGQxISyxDaMKTuIyCThsZ4FeXl7hSpOtDWS/r8j2s6dSvi44Wq7U5LT17/AH6HsGueEJoP2Q/GWjqVYab4jmurW4RtyTRK6BXU4GR8zduoNfDWqosd1hpA0jxBmAH3Gycr+lfo744t5NH/AGetTtoZWkt7yO3jW3SMAQFpURgpH8OOg7YPOOn5v6nYXFrcskyMHjYxOG65Bxn8a+ioyi3Y+FqxnGL7X/L/AIczqcjvG25GKn1BxTaK6zzxWdnYs7Fie5OaQHByKKKAPcvhV4knsrBDNqFtbRvlS1zII1GO+TWL8WNehv7/AMpdQt5m/iEMnmE/j2ryeikkO48DzJVQdzivfbhfBl18FLnwlHoaz+IzpKajBMtuHuFlBEpCPjPlC3xwPRuDjNeJ6Bo15rWsCC0QlYVNxPJjIiiXlnPsPbmvYvCXiO00fxd4W+IM8ZiutIkH25kbHmCKFgGT1JUIOOx6daTkr2HE/9k=";
+
+/* Numerics core for the CSc 301 IEM rebuilds. Pure functions, no DOM: tested in node by test_num.js.
+   Matrices are arrays of row arrays. */
+const N = (() => {
+  "use strict";
+  const N = {};
+
+  /* ---------- expressions: parse, compile, differentiate ---------- */
+  const FN = { sin: Math.sin, cos: Math.cos, tan: Math.tan, exp: Math.exp, log: Math.log, ln: Math.log, sqrt: Math.sqrt,
+    abs: Math.abs, atan: Math.atan, asin: Math.asin, acos: Math.acos, sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+    log10: Math.log10, sign: Math.sign };
+  N.parse = function (src) {
+    const toks = [], re = /\s*(\d+\.?\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|[A-Za-z_]\w*|\*\*|[-+*/^(),])/y;
+    let m, i = 0; src = String(src).trim();
+    while (i < src.length) { re.lastIndex = i; m = re.exec(src); if (!m) throw new Error("cannot read '" + src.slice(i) + "'"); toks.push(m[1]); i = re.lastIndex; }
+    let k = 0; const peek = () => toks[k], next = () => toks[k++];
+    const expect = t => { if (next() !== t) throw new Error("expected " + t); };
+    function expr() { let a = term(); while (peek() === "+" || peek() === "-") { const o = next(); a = { t: "op", o, a, b: term() }; } return a; }
+    function term() { let a = unary(); while (peek() === "*" || peek() === "/" || (peek() && /^[\w.(]/.test(peek()) && !isOp(peek()))) { const o = (peek() === "*" || peek() === "/") ? next() : "*"; a = { t: "op", o, a, b: unary() }; } return a; }
+    function isOp(t) { return t === ")" || t === "," ; }
+    function unary() { if (peek() === "-") { next(); return { t: "neg", a: unary() }; } if (peek() === "+") { next(); return unary(); } return power(); }
+    function power() { const a = atom(); if (peek() === "^" || peek() === "**") { next(); return { t: "op", o: "^", a, b: unary() }; } return a; }
+    function atom() {
+      const t = next(); if (t === undefined) throw new Error("unexpected end");
+      if (t === "(") { const e = expr(); expect(")"); return e; }
+      if (/^[\d.]/.test(t)) return { t: "num", v: parseFloat(t), s: t };
+      if (/^[A-Za-z_]/.test(t)) {
+        if (peek() === "(" && FN[t]) { next(); const a = expr(); expect(")"); return { t: "fn", f: t === "ln" ? "log" : t, a }; }
+        if (t === "pi") return { t: "num", v: Math.PI, s: PI_STR };
+        if (t === "e") return { t: "num", v: Math.E, s: E_STR };
+        return { t: "var", n: t };
+      }
+      throw new Error("unexpected '" + t + "'");
+    }
+    const e = expr(); if (k < toks.length) throw new Error("unexpected '" + toks[k] + "'"); return e;
+  };
+  N.compile = function (ast, vars) {
+    function c(n) {
+      switch (n.t) {
+        case "num": { const v = n.v; return () => v; }
+        case "var": { const j = vars.indexOf(n.n); if (j < 0) throw new Error("unknown variable " + n.n); return a => a[j]; }
+        case "neg": { const f = c(n.a); return a => -f(a); }
+        case "fn": { const f = c(n.a), g = FN[n.f]; return a => g(f(a)); }
+        case "op": { const f = c(n.a), g = c(n.b);
+          if (n.o === "+") return a => f(a) + g(a); if (n.o === "-") return a => f(a) - g(a);
+          if (n.o === "*") return a => f(a) * g(a); if (n.o === "/") return a => f(a) / g(a);
+          return a => Math.pow(f(a), g(a)); }
+      }
+    }
+    const f = c(ast); return (...a) => f(a);
+  };
+  const num = v => ({ t: "num", v }), isNum = (n, v) => n.t === "num" && (v === undefined || n.v === v);
+  function op(o, a, b) {
+    if (isNum(a) && isNum(b)) { const r = N.compile({ t: "op", o, a, b }, [])(); if (Number.isFinite(r)) return num(r); }
+    if (o === "+") { if (isNum(a, 0)) return b; if (isNum(b, 0)) return a; }
+    if (o === "-") { if (isNum(b, 0)) return a; if (isNum(a, 0)) return neg(b); }
+    if (o === "*") { if (isNum(a, 0) || isNum(b, 0)) return num(0); if (isNum(a, 1)) return b; if (isNum(b, 1)) return a; }
+    if (o === "/") { if (isNum(a, 0)) return num(0); if (isNum(b, 1)) return a; }
+    if (o === "^") { if (isNum(b, 1)) return a; if (isNum(b, 0)) return num(1); }
+    return { t: "op", o, a, b };
+  }
+  function neg(a) { if (isNum(a)) return num(-a.v); if (a.t === "neg") return a.a; return { t: "neg", a }; }
+  const fn = (f, a) => ({ t: "fn", f, a });
+  N.diff = function d(n, x) {
+    switch (n.t) {
+      case "num": return num(0);
+      case "var": return num(n.n === x ? 1 : 0);
+      case "neg": return neg(d(n.a, x));
+      case "op": {
+        const a = n.a, b = n.b, da = d(a, x), db = d(b, x);
+        if (n.o === "+" || n.o === "-") return op(n.o, da, db);
+        if (n.o === "*") return op("+", op("*", da, b), op("*", a, db));
+        if (n.o === "/") return op("/", op("-", op("*", da, b), op("*", a, db)), op("^", b, num(2)));
+        if (isNum(db, 0)) return op("*", op("*", b, op("^", a, op("-", b, num(1)))), da);
+        return op("*", n, op("+", op("*", db, fn("log", a)), op("/", op("*", b, da), a)));
+      }
+      case "fn": {
+        const a = n.a, da = d(a, x); let g;
+        switch (n.f) {
+          case "sin": g = fn("cos", a); break; case "cos": g = neg(fn("sin", a)); break;
+          case "tan": g = op("/", num(1), op("^", fn("cos", a), num(2))); break;
+          case "exp": g = fn("exp", a); break; case "log": g = op("/", num(1), a); break;
+          case "log10": g = op("/", num(1 / Math.LN10), a); break;
+          case "sqrt": g = op("/", num(0.5), fn("sqrt", a)); break; case "abs": g = fn("sign", a); break;
+          case "atan": g = op("/", num(1), op("+", num(1), op("^", a, num(2)))); break;
+          case "asin": g = op("/", num(1), fn("sqrt", op("-", num(1), op("^", a, num(2))))); break;
+          case "acos": g = neg(op("/", num(1), fn("sqrt", op("-", num(1), op("^", a, num(2)))))); break;
+          case "sinh": g = fn("cosh", a); break; case "cosh": g = fn("sinh", a); break;
+          case "tanh": g = op("/", num(1), op("^", fn("cosh", a), num(2))); break;
+          case "sign": g = num(0); break;
+        }
+        return op("*", g, da);
+      }
+    }
+  };
+  /** Parse src in variables vars; return {f, df:[partials], d2:[[second partials]], ast}. */
+  N.func = function (src, vars) {
+    const ast = N.parse(src), f = N.compile(ast, vars);
+    const dAst = vars.map(v => N.diff(ast, v));
+    const df = dAst.map(a => N.compile(a, vars));
+    const d2 = dAst.map(a => vars.map(v => N.compile(N.diff(a, v), vars)));
+    return { f, df, d2, ast };
+  };
+
+  const PREC = { "+": 1, "-": 1, "*": 2, "/": 2, "^": 3 };
+  /** Expression back to text (minimal parentheses). */
+  N.str = function str(n, parent = 0, right = false) {
+    switch (n.t) {
+      case "num": return fmt(n.v, 6);
+      case "var": return n.n;
+      case "neg": { const s = "−" + str(n.a, 3); return parent >= 2 ? "(" + s + ")" : s; }
+      case "fn": return n.f + "(" + str(n.a) + ")";
+      case "op": { const p = PREC[n.o], s = str(n.a, p, false) + ` ${n.o === "*" ? "×" : n.o === "-" ? "−" : n.o} ` + str(n.b, p, true); return (p < parent || (p === parent && right && n.o !== "^") || (n.o === "^" && parent === 3 && !right)) ? "(" + s + ")" : s; }
+    }
+  };
+  /** Evaluate an expression rounding every input, operation and function value to the system sys (see fpRound).
+      Returns {v, steps: [{s, exact, v, flag}]} where exact is the operation done exactly on the rounded operands. */
+  N.fpEval = function (ast, vars, vals, sys) {
+    const steps = [], R = x => N.fpRound(x, sys);
+    function ev(n) {
+      switch (n.t) {
+        case "num": { const r = R(n.v); if (r.v !== n.v) steps.push({ s: "store " + fmt(n.v, 10), exact: n.v, v: r.v, flag: r.flag }); return r.v; }
+        case "var": { const x = vals[vars.indexOf(n.n)], r = R(x); if (r.v !== x) steps.push({ s: "store " + n.n, exact: x, v: r.v, flag: r.flag }); return r.v; }
+        case "neg": return -ev(n.a);
+        case "fn": { const a = ev(n.a), ex = N.compile({ t: "fn", f: n.f, a: { t: "num", v: a } }, [])(), r = R(ex); steps.push({ s: `${n.f}(${fmt(a, 8)})`, exact: ex, v: r.v, flag: r.flag }); return r.v; }
+        case "op": { const a = ev(n.a), b = ev(n.b), ex = N.compile({ t: "op", o: n.o, a: { t: "num", v: a }, b: { t: "num", v: b } }, [])(), r = R(ex);
+          steps.push({ s: `${fmt(a, 8)} ${n.o === "*" ? "×" : n.o === "-" ? "−" : n.o} ${fmt(b, 8)}`, exact: ex, v: r.v, flag: r.flag }); return r.v; }
+      }
+    }
+    const v = ev(ast); return { v, steps };
+  };
+
+  /* ---------- high-precision reference values ---------- */
+  const PI_STR = "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899863";
+  const E_STR = "2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457";
+  const DIG = 60n, S = 10n ** DIG;                    // fixed-point scale for function evaluation
+  const babs = a => a < 0n ? -a : a;
+  function gcd(a, b) { a = babs(a); b = babs(b); while (b) [a, b] = [b, a % b]; return a; }
+  const rat = (n, d = 1n) => { if (d < 0n) { n = -n; d = -d; } const g = gcd(n, d) || 1n; return { n: n / g, d: d / g }; };
+  function ratFromStr(t) { const m = t.match(/^(\d*)(?:\.(\d*))?(?:[eE]([-+]?\d+))?$/); let n = BigInt((m[1] || "0") + (m[2] || "")), d = 10n ** BigInt((m[2] || "").length); const e = parseInt(m[3] || "0", 10); if (e > 0) n *= 10n ** BigInt(e); else if (e < 0) d *= 10n ** BigInt(-e); return rat(n, d); }
+  function ratFromDouble(x) { if (x === 0) return rat(0n); let e = 0; while (!Number.isInteger(x) && e < 1100) { x *= 2; e++; } return rat(BigInt(x), 2n ** BigInt(e)); }
+  function ratToDouble(r) {
+    if (r.n === 0n) return 0; const neg = r.n < 0n, n = babs(r.n);
+    const sh = BigInt(n.toString(2).length - r.d.toString(2).length - 60);   // scale so the quotient has ~60 bits
+    const q = sh >= 0n ? n / (r.d << sh) : (n << -sh) / r.d;
+    const v = Number(q) * Math.pow(2, Number(sh)); return neg ? -v : v;
+  }
+  const toFix = r => r.n * S / r.d, fromFix = v => rat(v, S);
+  const fmul = (a, b) => a * b / S, fdiv = (a, b) => a * S / b;
+  function isqrt(n) { if (n < 2n) return n; let x = BigInt(Math.floor(Math.sqrt(Number(n)))) || 1n; for (;;) { const y = (x + n / x) >> 1n; if (babs(y - x) <= 1n) { while (y * y > n) return y - 1n; return y; } x = y; } }
+  function fexp(x) { let m = 0n; while (babs(x) > S / 2n) { x /= 2n; m++; } let t = S, s = S; for (let k = 1n; k < 80n; k++) { t = fmul(t, x) / k; if (t === 0n) break; s += t; } for (; m > 0n; m--) s = fmul(s, s); return s; }
+  function fatanh(z) { let s = 0n, p = z; const z2 = fmul(z, z); for (let k = 1n; k < 400n; k += 2n) { const t = p / k; if (t === 0n) break; s += t; p = fmul(p, z2); } return s; }
+  const LN2 = 2n * fatanh(S / 3n);
+  function flog(x) { if (x <= 0n) throw new Error("log of a non-positive number"); let m = 0n; while (x > 2n * S) { x /= 2n; m++; } while (x < S / 2n) { x *= 2n; m--; } return 2n * fatanh(fdiv(x - S, x + S)) + m * LN2; }
+  const FPI = ratFromStr(PI_STR.slice(0, 70)), PIF = toFix(FPI);
+  function fsincos(x) { const tp = 2n * PIF; x = x % tp; if (x > PIF) x -= tp; if (x < -PIF) x += tp; let s = 0n, c = 0n, t = S; for (let k = 0n; k < 120n; k++) { if (t === 0n) break; if (k % 2n === 0n) c += (k % 4n === 0n ? t : -t); else s += (k % 4n === 1n ? t : -t); t = fmul(t, x) / (k + 1n); } return [s, c]; }
+  /** Value of an expression without rounding error (exact rationals for + − × ÷ and integer powers, 60-digit
+      fixed point for sqrt, exp, log, sin, cos, tan); other functions fall back to double precision. */
+  N.exactEval = function (ast) {
+    function ev(n) {
+      switch (n.t) {
+        case "num": return n.s ? ratFromStr(n.s) : ratFromDouble(n.v);
+        case "var": throw new Error("variables not allowed");
+        case "neg": { const a = ev(n.a); return { n: -a.n, d: a.d }; }
+        case "op": {
+          const a = ev(n.a), b = ev(n.b);
+          if (n.o === "+") return rat(a.n * b.d + b.n * a.d, a.d * b.d); if (n.o === "-") return rat(a.n * b.d - b.n * a.d, a.d * b.d);
+          if (n.o === "*") return rat(a.n * b.n, a.d * b.d); if (n.o === "/") { if (b.n === 0n) throw new Error("division by zero"); return rat(a.n * b.d, a.d * b.n); }
+          if (b.d === 1n && babs(b.n) <= 4000n) { const k = b.n, p = rat(a.n ** babs(k), a.d ** babs(k)); return k < 0n ? rat(p.d, p.n) : p; }
+          if (b.d === 2n && b.n === 1n) return ev({ t: "fn", f: "sqrt", a: n.a });
+          return fromFix(fexp(fmul(toFix(b), flog(toFix(a)))));
+        }
+        case "fn": {
+          const a = ev(n.a), x = toFix(a);
+          switch (n.f) {
+            case "sqrt": if (a.n < 0n) throw new Error("sqrt of a negative number"); return rat(isqrt(a.n * S * S / a.d), S);
+            case "exp": return fromFix(fexp(x));
+            case "log": return fromFix(flog(x));
+            case "sin": return fromFix(fsincos(x)[0]);
+            case "cos": return fromFix(fsincos(x)[1]);
+            case "tan": { const [s, c] = fsincos(x); return fromFix(fdiv(s, c)); }
+            case "abs": return { n: babs(a.n), d: a.d };
+            default: return ratFromDouble(FN[n.f](ratToDouble(a)));
+          }
+        }
+      }
+    }
+    return ratToDouble(ev(ast));
+  };
+
+  /* ---------- exact simulated arithmetic (rationals rounded to p digits in base beta) ---------- */
+  const Q = {};
+  Q.of = x => {
+    if (typeof x === "object") return x;
+    if (typeof x === "string") { const t = x.trim(), neg = t.startsWith("-"), u = t.replace(/^[-+]/, ""); if (!/^(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(u)) { const v = Number(t); if (!Number.isFinite(v)) throw new Error("not a number: " + x); return ratFromDouble(v); } const r = ratFromStr(u); return neg ? { n: -r.n, d: r.d } : r; }
+    if (!Number.isFinite(x)) throw new Error("not a finite number"); return ratFromDouble(x);
+  };
+  Q.add = (a, b) => rat(a.n * b.d + b.n * a.d, a.d * b.d); Q.sub = (a, b) => rat(a.n * b.d - b.n * a.d, a.d * b.d);
+  Q.mul = (a, b) => rat(a.n * b.n, a.d * b.d); Q.div = (a, b) => rat(a.n * b.d, a.d * b.n);
+  Q.num = ratToDouble; Q.isZero = a => a.n === 0n; Q.eq = (a, b) => a.n === b.n && a.d === b.d;
+  const bpow = (B, k) => k >= 0 ? rat(B ** BigInt(k)) : rat(1n, B ** BigInt(-k));
+  const cmp = (a, b) => { const t = a.n * b.d - b.n * a.d; return t > 0n ? 1 : t < 0n ? -1 : 0; };
+  /** Round rational r to sys = {beta, p, L, U, mode}; returns {r, flag}. */
+  Q.round = function (r, sys) {
+    const { beta, p, L, U, mode = "nearest" } = sys, B = BigInt(beta);
+    if (r.n === 0n) return { r, flag: "" };
+    const neg = r.n < 0n, a = { n: babs(r.n), d: r.d };
+    let e = Math.floor(Math.log(Math.max(ratToDouble(a), 1e-300)) / Math.log(beta));
+    if (!Number.isFinite(e)) e = 0;
+    while (cmp(bpow(B, e), a) > 0) e--; while (cmp(bpow(B, e + 1), a) <= 0) e++;
+    let flag = ""; if (e < L) { flag = "underflow"; e = L; }  // gradual: digits below beta^(L-p+1) are lost
+    const ulp = bpow(B, e - p + 1), m = Q.div(a, ulp), fl = m.n / m.d, rem = m.n - fl * m.d;  // m = fl + rem/d
+    let k = fl;
+    if (rem !== 0n) {
+      const up = (mode === "up" && !neg) || (mode === "down" && neg) || mode === "away";
+      if (mode === "nearest") { const t = 2n * rem - m.d; k = t > 0n ? fl + 1n : t < 0n ? fl : (fl % 2n ? fl + 1n : fl); }
+      else if (up) k = fl + 1n;
+    }
+    let out = Q.mul(rat(neg ? -k : k), ulp);
+    if (k === 0n) flag = "underflow";
+    const ofl = Q.mul(bpow(B, U + 1), Q.sub(rat(1n), bpow(B, -p)));
+    if (cmp({ n: babs(out.n), d: out.d }, ofl) > 0) { flag = "overflow"; out = { n: neg ? -ofl.n : ofl.n, d: ofl.d }; out.inf = true; }
+    return { r: out, flag };
+  };
+  function qfn(f, a) {
+    const x = toFix(a);
+    switch (f) {
+      case "sqrt": if (a.n < 0n) throw new Error("sqrt of a negative number"); return rat(isqrt(a.n * S * S / a.d), S);
+      case "exp": return fromFix(fexp(x)); case "log": return fromFix(flog(x));
+      case "sin": return fromFix(fsincos(x)[0]); case "cos": return fromFix(fsincos(x)[1]);
+      case "tan": { const [s, c] = fsincos(x); return fromFix(fdiv(s, c)); }
+      case "abs": return { n: babs(a.n), d: a.d };
+      case "sign": return rat(a.n > 0n ? 1n : a.n < 0n ? -1n : 0n);
+      default: return ratFromDouble(FN[f](ratToDouble(a)));
+    }
+  }
+  Q.fn = qfn;
+  N.Q = Q;
+  /** Evaluate an expression in simulated precision sys, exactly: every constant, input, operation and function value
+      is rounded (as a rational) to p base-beta digits. Returns {v (double), steps: [{s, exact, v, flag}]}. */
+  N.fpEvalExact = function (ast, vars, vals, sys) {
+    const steps = [], R = (q, s) => { const o = Q.round(q, sys); if (s !== null && !Q.eq(o.r, q)) steps.push({ s, exact: ratToDouble(q), v: o.inf ? Infinity : ratToDouble(o.r), flag: o.flag }); return o.r; };
+    const opS = (a, o, b) => `${fmt(ratToDouble(a), 8)} ${o === "*" ? "×" : o === "-" ? "−" : o} ${fmt(ratToDouble(b), 8)}`;
+    function ev(n) {
+      switch (n.t) {
+        case "num": return R(n.s ? ratFromStr(n.s) : ratFromDouble(n.v), "store " + (n.s && n.s.length < 14 ? n.s : fmt(n.v, 10)));
+        case "var": return R(Q.of(vals[vars.indexOf(n.n)]), "store " + n.n);
+        case "neg": { const a = ev(n.a); return { n: -a.n, d: a.d }; }
+        case "fn": { const a = ev(n.a), ex = qfn(n.f, a); const o = Q.round(ex, sys); steps.push({ s: `${n.f}(${fmt(ratToDouble(a), 8)})`, exact: ratToDouble(ex), v: ratToDouble(o.r), flag: o.flag }); return o.r; }
+        case "op": {
+          const a = ev(n.a), b = ev(n.b); let ex;
+          if (n.o === "+") ex = Q.add(a, b); else if (n.o === "-") ex = Q.sub(a, b); else if (n.o === "*") ex = Q.mul(a, b);
+          else if (n.o === "/") { if (b.n === 0n) throw new Error("division by zero"); ex = Q.div(a, b); }
+          else { if (b.d === 1n && babs(b.n) <= 64n) { let p = rat(1n); for (let i = 0n; i < babs(b.n); i++) p = R(Q.mul(p, a), null); ex = b.n < 0n ? Q.div(rat(1n), p) : p; } else ex = fromFix(fexp(fmul(toFix(b), flog(toFix(a))))); }
+          const o = Q.round(ex, sys); steps.push({ s: opS(a, n.o, b), exact: ratToDouble(ex), v: o.inf ? (ex.n < 0n ? -Infinity : Infinity) : ratToDouble(o.r), flag: o.flag }); return o.r;
+        }
+      }
+    }
+    const r = ev(ast); return { v: ratToDouble(r), steps, q: r };
+  };
+
+  /* ---------- Taylor coefficients by truncated power-series arithmetic ---------- */
+  /** Coefficients c[0..n] of the Taylor polynomial of the expression (variable v) at x0: f(x0 + h) ≈ Σ c_k h^k. */
+  N.taylor = function (ast, v, x0, n) {
+    const Z = () => new Array(n + 1).fill(0), cst = a => { const r = Z(); r[0] = a; return r; };
+    const mul = (a, b) => { const r = Z(); for (let i = 0; i <= n; i++) if (a[i]) for (let j = 0; i + j <= n; j++) r[i + j] += a[i] * b[j]; return r; };
+    const div = (a, b) => { const r = Z(); for (let k = 0; k <= n; k++) { let s = a[k]; for (let j = 1; j <= k; j++) s -= b[j] * r[k - j]; r[k] = s / b[0]; } return r; };
+    const exp = a => { const r = Z(); r[0] = Math.exp(a[0]); for (let k = 1; k <= n; k++) { let s = 0; for (let j = 1; j <= k; j++) s += j * a[j] * r[k - j]; r[k] = s / k; } return r; };
+    const log = a => { const r = Z(); r[0] = Math.log(a[0]); for (let k = 1; k <= n; k++) { let s = 0; for (let j = 1; j < k; j++) s += j * r[j] * a[k - j]; r[k] = (a[k] - s / k) / a[0]; } return r; };
+    const sincos = a => { const s = Z(), c = Z(); s[0] = Math.sin(a[0]); c[0] = Math.cos(a[0]); for (let k = 1; k <= n; k++) { let p = 0, q = 0; for (let j = 1; j <= k; j++) { p += j * a[j] * c[k - j]; q += j * a[j] * s[k - j]; } s[k] = p / k; c[k] = -q / k; } return [s, c]; };
+    const pw = (a, al) => { const r = Z(); r[0] = Math.pow(a[0], al); for (let k = 1; k <= n; k++) { let s = 0; for (let j = 1; j <= k; j++) s += ((al + 1) * j - k) * a[j] * r[k - j]; r[k] = s / (k * a[0]); } return r; };
+    const integ = (a, d, c0) => { const r = Z(); r[0] = c0; for (let k = 1; k <= n; k++) { let s = 0; for (let j = 1; j <= k; j++) s += j * a[j] * d[k - j]; r[k] = s / k; } return r; };  // r' = a' d
+    function ev(t) {
+      switch (t.t) {
+        case "num": return cst(t.v);
+        case "var": { if (t.n !== v) throw new Error("unknown variable " + t.n); const r = cst(x0); if (n >= 1) r[1] = 1; return r; }
+        case "neg": return ev(t.a).map(x => -x);
+        case "op": {
+          const a = ev(t.a);
+          if (t.o === "^" && t.b.t === "num") { const p = t.b.v; if (Number.isInteger(p) && p >= 0 && p <= 64) { let r = cst(1); for (let i = 0; i < p; i++) r = mul(r, a); return r; } if (a[0] === 0) throw new Error("power of zero"); return pw(a, p); }
+          const b = ev(t.b);
+          if (t.o === "+") return a.map((x, i) => x + b[i]); if (t.o === "-") return a.map((x, i) => x - b[i]);
+          if (t.o === "*") return mul(a, b); if (t.o === "/") return div(a, b);
+          return exp(mul(b, log(a)));
+        }
+        case "fn": {
+          const a = ev(t.a);
+          switch (t.f) {
+            case "exp": return exp(a); case "log": return log(a); case "log10": return log(a).map(x => x / Math.LN10);
+            case "sin": return sincos(a)[0]; case "cos": return sincos(a)[1];
+            case "tan": { const [s, c] = sincos(a); return div(s, c); }
+            case "sqrt": return pw(a, 0.5); case "abs": return a.map(x => x * Math.sign(a[0] || 1));
+            case "sinh": { const e = exp(a), m = exp(a.map(x => -x)); return e.map((x, i) => (x - m[i]) / 2); }
+            case "cosh": { const e = exp(a), m = exp(a.map(x => -x)); return e.map((x, i) => (x + m[i]) / 2); }
+            case "tanh": { const e = exp(a.map(x => 2 * x)); return div(e.map((x, i) => x - (i ? 0 : 1)), e.map((x, i) => x + (i ? 0 : 1))); }
+            case "atan": { const q = div(cst(1), mul(a, a).map((x, i) => x + (i ? 0 : 1))); return integ(a, q, Math.atan(a[0])); }
+            case "asin": { const q = pw(mul(a, a).map((x, i) => (i ? 0 : 1) - x), -0.5); return integ(a, q, Math.asin(a[0])); }
+            case "acos": { const q = pw(mul(a, a).map((x, i) => (i ? 0 : 1) - x), -0.5); return integ(a, q.map(x => -x), Math.acos(a[0])); }
+            case "sign": return cst(Math.sign(a[0]));
+          }
+        }
+      }
+      throw new Error("cannot expand " + t.t);
+    }
+    return ev(ast);
+  };
+
+  /* ---------- vectors and matrices ---------- */
+  N.zeros = (m, n) => Array.from({ length: m }, () => new Array(n).fill(0));
+  N.eye = n => N.zeros(n, n).map((r, i) => (r[i] = 1, r));
+  N.clone = A => A.map(r => r.slice());
+  N.T = A => A[0].map((_, j) => A.map(r => r[j]));
+  N.mm = (A, B) => A.map(r => B[0].map((_, j) => r.reduce((s, a, k) => s + a * B[k][j], 0)));
+  N.mv = (A, x) => A.map(r => r.reduce((s, a, k) => s + a * x[k], 0));
+  N.dot = (x, y) => x.reduce((s, a, i) => s + a * y[i], 0);
+  N.add = (x, y, c = 1) => x.map((a, i) => a + c * y[i]);
+  N.scale = (x, c) => x.map(a => a * c);
+  N.norm = function (x, p = 2) {
+    if (p === Infinity) return Math.max(...x.map(Math.abs));
+    if (p === 1) return x.reduce((s, a) => s + Math.abs(a), 0);
+    if (p === 2) { let sc = 0, ss = 1; for (const a of x) if (a) { const b = Math.abs(a); if (sc < b) { ss = 1 + ss * (sc / b) ** 2; sc = b; } else ss += (b / sc) ** 2; } return sc * Math.sqrt(ss); }
+    return Math.pow(x.reduce((s, a) => s + Math.abs(a) ** p, 0), 1 / p);
+  };
+  N.matnorm = function (A, p = 2) {
+    if (p === 1) return Math.max(...N.T(A).map(c => N.norm(c, 1)));
+    if (p === Infinity) return Math.max(...A.map(r => N.norm(r, 1)));
+    if (p === "fro") return Math.sqrt(A.flat().reduce((s, a) => s + a * a, 0));
+    return N.svd(A).s[0];
+  };
+  N.cond = function (A, p = 2) {
+    if (p === 2) { const s = N.svd(A).s; return s[s.length - 1] === 0 ? Infinity : s[0] / s[s.length - 1]; }
+    const Ai = N.inv(A); return Ai ? N.matnorm(A, p) * N.matnorm(Ai, p) : Infinity;
+  };
+  N.det = function (A) { const r = N.lu(A); if (!r) return 0; let d = r.sign; r.U.forEach((row, i) => d *= row[i]); return d; };
+
+  /** LU with pivoting 'none' | 'partial' | 'complete'. Returns {L, U, p (row perm), q (col perm), sign, steps}. */
+  N.lu = function (A0, pivot = "partial", record = false) {
+    const n = A0.length, A = N.clone(A0), L = N.eye(n), p = [...Array(n).keys()], q = [...Array(n).keys()], steps = [];
+    let sign = 1;
+    for (let k = 0; k < n - 1; k++) {
+      let r = k, c = k;
+      if (pivot === "partial") { for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[r][k])) r = i; }
+      else if (pivot === "complete") { for (let i = k; i < n; i++) for (let j = k; j < n; j++) if (Math.abs(A[i][j]) > Math.abs(A[r][c])) { r = i; c = j; } }
+      if (r !== k) { [A[k], A[r]] = [A[r], A[k]]; [p[k], p[r]] = [p[r], p[k]]; for (let j = 0; j < k; j++) [L[k][j], L[r][j]] = [L[r][j], L[k][j]]; sign = -sign; }
+      if (c !== k) { A.forEach(row => [row[k], row[c]] = [row[c], row[k]]); [q[k], q[c]] = [q[c], q[k]]; sign = -sign; }
+      if (record) steps.push({ k, swapRow: r, swapCol: c, A: N.clone(A), L: N.clone(L) });
+      if (A[k][k] === 0) { if (A.slice(k + 1).every(row => row[k] === 0)) continue; return null; }
+      for (let i = k + 1; i < n; i++) { const m = A[i][k] / A[k][k]; L[i][k] = m; for (let j = k; j < n; j++) A[i][j] -= m * A[k][j]; A[i][k] = 0; }
+    }
+    if (record) steps.push({ k: n - 1, A: N.clone(A), L: N.clone(L), done: true });
+    return { L, U: A, p, q, sign, steps };
+  };
+  N.lsolve = (L, b, unit = true) => { const x = b.slice(); for (let i = 0; i < L.length; i++) { for (let j = 0; j < i; j++) x[i] -= L[i][j] * x[j]; if (!unit) x[i] /= L[i][i]; } return x; };
+  N.usolve = (U, b) => { const n = U.length, x = b.slice(); for (let i = n - 1; i >= 0; i--) { for (let j = i + 1; j < U[i].length && j < n; j++) x[i] -= U[i][j] * x[j]; x[i] /= U[i][i]; } return x; };
+  N.solve = function (A, b) {
+    const r = N.lu(A, "partial"); if (!r || r.U.some((row, i) => row[i] === 0)) return null;
+    const y = N.lsolve(r.L, r.p.map(i => b[i])), z = N.usolve(r.U, y), x = new Array(z.length);
+    r.q.forEach((j, i) => x[j] = z[i]); return x;
+  };
+  N.inv = function (A) { const n = A.length, cols = []; for (let j = 0; j < n; j++) { const e = new Array(n).fill(0); e[j] = 1; const x = N.solve(A, e); if (!x) return null; cols.push(x); } return N.T(cols); };
+  /** Cholesky A = L L^T; returns {L, steps} or {fail: k}. */
+  N.chol = function (A, record = false) {
+    const n = A.length, L = N.zeros(n, n), steps = [];
+    for (let j = 0; j < n; j++) {
+      let s = A[j][j]; for (let k = 0; k < j; k++) s -= L[j][k] ** 2;
+      if (!(s > 0)) return { fail: j, L, steps };
+      L[j][j] = Math.sqrt(s);
+      for (let i = j + 1; i < n; i++) { let t = A[i][j]; for (let k = 0; k < j; k++) t -= L[i][k] * L[j][k]; L[i][j] = t / L[j][j]; }
+      if (record) steps.push(N.clone(L));
+    }
+    return { L, steps };
+  };
+  /** Gauss-Jordan on [A | b]; each step records the augmented matrix. */
+  N.gaussJordan = function (A, b, pivot = true) {
+    const n = A.length, M = A.map((r, i) => [...r, b[i]]), steps = [{ M: N.clone(M), note: "start" }];
+    for (let k = 0; k < n; k++) {
+      let r = k; if (pivot) for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[r][k])) r = i;
+      if (r !== k) { [M[k], M[r]] = [M[r], M[k]]; steps.push({ M: N.clone(M), note: `swap rows ${k + 1} and ${r + 1}` }); }
+      if (M[k][k] === 0) return { steps, fail: k };
+      const d = M[k][k]; M[k] = M[k].map(v => v / d); steps.push({ M: N.clone(M), note: `divide row ${k + 1} by ${fmt(d)}` });
+      for (let i = 0; i < n; i++) if (i !== k && M[i][k] !== 0) { const m = M[i][k]; M[i] = M[i].map((v, j) => v - m * M[k][j]); M[i][k] = 0; }
+      steps.push({ M: N.clone(M), note: `eliminate column ${k + 1} above and below the pivot` });
+    }
+    return { steps, x: M.map(r => r[n]) };
+  };
+
+  /* ---------- orthogonal factorizations ---------- */
+  /** Householder vector v (unnormalized) that maps x to -sign(x0)||x|| e1. */
+  N.house = function (x) { const a = -(Math.sign(x[0]) || 1) * N.norm(x), v = x.slice(); v[0] -= a; return { v, alpha: a }; };
+  N.applyHouse = (v, y) => { const vv = N.dot(v, v); if (!vv) return y.slice(); const c = 2 * N.dot(v, y) / vv; return y.map((a, i) => a - c * v[i]); };
+  /** Householder QR of m x n A. steps[k] = {R, v} after the k-th reflection. Q is m x m. */
+  N.householderQR = function (A0) {
+    const m = A0.length, n = A0[0].length, R = N.clone(A0), Q = N.eye(m), steps = [];
+    for (let k = 0; k < Math.min(n, m - 1); k++) {
+      const x = R.slice(k).map(r => r[k]); const { v } = N.house(x); const vf = new Array(k).fill(0).concat(v);
+      for (let j = 0; j < n; j++) { const col = N.applyHouse(vf, R.map(r => r[j])); col.forEach((a, i) => R[i][j] = a); }
+      for (let i = 0; i < m; i++) Q[i] = N.applyHouse(vf, Q[i]);  // Q^T rows -> build Q = H1 H2 ... by right-multiplying
+      for (let i = k + 1; i < m; i++) R[i][k] = 0;
+      steps.push({ R: N.clone(R), v: vf, k });
+    }
+    return { Q, R, steps };
+  };
+  /** Givens QR: steps[i] = {R, i, j, c, s} after zeroing R[i][j] using rows i-1 and i (bottom up per column). */
+  N.givensQR = function (A0) {
+    const m = A0.length, n = A0[0].length, R = N.clone(A0), Qt = N.eye(m), steps = [];
+    for (let j = 0; j < n; j++) for (let i = m - 1; i > j; i--) {
+      const a = R[i - 1][j], b = R[i][j]; if (b === 0) continue;
+      const r = Math.hypot(a, b), c = a / r, s = b / r;
+      for (const M of [R, Qt]) for (let k = 0; k < M[0].length; k++) { const u = M[i - 1][k], w = M[i][k]; M[i - 1][k] = c * u + s * w; M[i][k] = -s * u + c * w; }
+      R[i][j] = 0; steps.push({ R: N.clone(R), i, j, c, s });
+    }
+    return { Q: N.T(Qt), R, steps };
+  };
+  /** Classical (modified=false) or modified Gram-Schmidt; returns reduced Q (m x n), R (n x n) and steps. */
+  N.gramSchmidt = function (A0, modified = false) {
+    const m = A0.length, n = A0[0].length, V = N.T(A0), Q = [], R = N.zeros(n, n), steps = [];
+    for (let k = 0; k < n; k++) {
+      let v = V[k].slice();
+      if (!modified) for (let j = 0; j < k; j++) { R[j][k] = N.dot(Q[j], V[k]); v = N.add(v, Q[j], -R[j][k]); }
+      else v = V[k];
+      R[k][k] = N.norm(v); const q = N.scale(v, 1 / R[k][k]); Q.push(q);
+      if (modified) for (let j = k + 1; j < n; j++) { R[k][j] = N.dot(q, V[j]); V[j] = N.add(V[j], q, -R[k][j]); }
+      steps.push({ Q: N.T(Q.concat(V.slice(k + 1).map(c => c.slice()))), R: N.clone(R), k });
+    }
+    return { Q: N.T(Q), R, steps };
+  };
+  /** Householder QR with column pivoting: picks the remaining column of largest norm. Returns perm and diag of R. */
+  N.pivotQR = function (A0) {
+    const m = A0.length, n = A0[0].length, R = N.clone(A0), perm = [...Array(n).keys()], steps = [];
+    for (let k = 0; k < Math.min(n, m); k++) {
+      let best = k, bn = -1;
+      for (let j = k; j < n; j++) { const c = N.norm(R.slice(k).map(r => r[j])); if (c > bn) { bn = c; best = j; } }
+      if (best !== k) { R.forEach(r => [r[k], r[best]] = [r[best], r[k]]); [perm[k], perm[best]] = [perm[best], perm[k]]; }
+      if (k < m - 1) {
+        const { v } = N.house(R.slice(k).map(r => r[k])); const vf = new Array(k).fill(0).concat(v);
+        for (let j = 0; j < n; j++) { const col = N.applyHouse(vf, R.map(r => r[j])); col.forEach((a, i) => R[i][j] = a); }
+        for (let i = k + 1; i < m; i++) R[i][k] = 0;
+      }
+      steps.push({ R: N.clone(R), perm: perm.slice(), k, colnorm: bn });
+    }
+    return { R, perm, steps };
+  };
+  /** One-sided Jacobi SVD: A (m x n, m >= n or not) = U diag(s) V^T, s descending, U m x r, V n x r, r = min(m,n). */
+  N.svd = function (A0) {
+    let A = A0, tr = false;
+    if (A0.length < A0[0].length) { A = N.T(A0); tr = true; }
+    const m = A.length, n = A[0].length, U = N.clone(A), V = N.eye(n);
+    for (let sweep = 0; sweep < 60; sweep++) {
+      let off = 0;
+      for (let p = 0; p < n - 1; p++) for (let q = p + 1; q < n; q++) {
+        let a = 0, b = 0, c = 0; for (let i = 0; i < m; i++) { a += U[i][p] ** 2; b += U[i][q] ** 2; c += U[i][p] * U[i][q]; }
+        if (Math.abs(c) <= 1e-15 * Math.sqrt(a * b) || c === 0) continue;
+        off = Math.max(off, Math.abs(c) / Math.sqrt(a * b));
+        const z = (b - a) / (2 * c), t = Math.sign(z || 1) / (Math.abs(z) + Math.sqrt(1 + z * z)), cs = 1 / Math.sqrt(1 + t * t), sn = cs * t;
+        for (const M of [U, V]) for (const r of M) { const u = r[p], w = r[q]; r[p] = cs * u - sn * w; r[q] = sn * u + cs * w; }
+      }
+      if (off < 1e-15) break;
+    }
+    let s = [...Array(n).keys()].map(j => Math.sqrt(U.reduce((t, r) => t + r[j] ** 2, 0)));
+    const ord = [...Array(n).keys()].sort((i, j) => s[j] - s[i]);
+    s = ord.map(j => s[j]);
+    const Uo = U.map(r => ord.map((j, k) => s[k] ? r[j] / s[k] : 0)), Vo = V.map(r => ord.map(j => r[j]));
+    return tr ? { U: Vo, s, V: Uo } : { U: Uo, s, V: Vo };
+  };
+  /** Least squares min ||Ax - b||_2 by Householder QR (full rank). */
+  N.lstsq = function (A, b) {
+    const n = A[0].length, { Q, R } = N.householderQR(A), c = N.mv(N.T(Q), b);
+    return N.usolve(R.slice(0, n).map(r => r.slice(0, n)), c.slice(0, n));
+  };
+
+  /* ---------- eigenvalues ---------- */
+  /** Hessenberg reduction by Householder similarity; steps record H after each step. */
+  N.hessenberg = function (A0) {
+    const n = A0.length, H = N.clone(A0), steps = [{ H: N.clone(H) }];
+    for (let k = 0; k < n - 2; k++) {
+      const x = H.slice(k + 1).map(r => r[k]); if (N.norm(x.slice(1)) === 0) { steps.push({ H: N.clone(H), k }); continue; }
+      const { v } = N.house(x), vf = new Array(k + 1).fill(0).concat(v);
+      for (let j = 0; j < n; j++) { const col = N.applyHouse(vf, H.map(r => r[j])); col.forEach((a, i) => H[i][j] = a); }
+      for (let i = 0; i < n; i++) H[i] = N.applyHouse(vf, H[i]);
+      for (let i = k + 2; i < n; i++) H[i][k] = 0;
+      steps.push({ H: N.clone(H), k });
+    }
+    return { H, steps };
+  };
+  /** One unshifted/shifted QR iteration step: A - sI = QR, A <- RQ + sI. */
+  N.qrStep = function (A, s = 0) {
+    const n = A.length, B = A.map((r, i) => r.map((a, j) => a - (i === j ? s : 0)));
+    const { Q, R } = N.householderQR(B);
+    return N.mm(R, Q).map((r, i) => r.map((a, j) => a + (i === j ? s : 0)));
+  };
+  /** Eigenvalues of a 2x2 block as [{re, im}, {re, im}]. */
+  N.eig2 = function (a, b, c, d) {
+    const tr = a + d, det = a * d - b * c, disc = tr * tr / 4 - det;
+    if (disc >= 0) { const r = Math.sqrt(disc), l1 = tr / 2 + Math.sign(tr || 1) * r, l2 = l1 ? det / l1 : tr / 2 - r; return [{ re: l1, im: 0 }, { re: l2, im: 0 }]; }
+    const r = Math.sqrt(-disc); return [{ re: tr / 2, im: r }, { re: tr / 2, im: -r }];
+  };
+  /** All eigenvalues of a real square matrix (Hessenberg + Wilkinson-shifted QR with deflation; 2x2 blocks for complex pairs). */
+  N.eigvals = function (A0) {
+    let H = N.hessenberg(A0).H; const out = []; let n = H.length, it = 0;
+    while (n > 0) {
+      if (n === 1) { out.push({ re: H[0][0], im: 0 }); break; }
+      const tol = 1e-14 * (Math.abs(H[n - 1][n - 1]) + Math.abs(H[n - 2][n - 2]) || 1);
+      if (Math.abs(H[n - 1][n - 2]) < tol) { out.push({ re: H[n - 1][n - 1], im: 0 }); n--; H = H.slice(0, n).map(r => r.slice(0, n)); it = 0; continue; }
+      const e = N.eig2(H[n - 2][n - 2], H[n - 2][n - 1], H[n - 1][n - 2], H[n - 1][n - 1]);
+      if (n === 2 || Math.abs(H[n - 2][n - 3]) < 1e-14 * (Math.abs(H[n - 2][n - 2]) + Math.abs(H[n - 3][n - 3]))) {
+        if (e[0].im !== 0 || n === 2) { out.push(...e); n -= 2; H = H.slice(0, n).map(r => r.slice(0, n)); it = 0; continue; }
+      }
+      let s = e[0].im ? e[0].re : (Math.abs(e[0].re - H[n - 1][n - 1]) < Math.abs(e[1].re - H[n - 1][n - 1]) ? e[0].re : e[1].re);
+      if (it % 11 === 10) s = H[n - 1][n - 1] + 0.75 * Math.abs(H[n - 1][n - 2]);
+      H = N.qrStep(H, s); it++;
+      if (it > 500) { for (let i = 0; i < n; i++) out.push({ re: H[i][i], im: NaN }); break; }
+    }
+    return out.sort((a, b) => Math.hypot(b.re, b.im) - Math.hypot(a.re, a.im) || b.re - a.re || b.im - a.im);
+  };
+  /** Cyclic Jacobi for symmetric A; each step records the rotation (p, q) and the matrix. */
+  N.jacobiEig = function (A0, maxRot = 200) {
+    const n = A0.length, A = N.clone(A0), V = N.eye(n), steps = [{ A: N.clone(A), off: offNorm(A) }];
+    for (let r = 0; r < maxRot; r++) {
+      let p = 0, q = 1, big = 0;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (Math.abs(A[i][j]) > big) { big = Math.abs(A[i][j]); p = i; q = j; }
+      if (big < 1e-14 * Math.max(1, N.matnorm(A, "fro"))) break;
+      const th = (A[q][q] - A[p][p]) / (2 * A[p][q]), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(1 + th * th)), c = 1 / Math.sqrt(1 + t * t), s = c * t;
+      for (let k = 0; k < n; k++) { const u = A[k][p], w = A[k][q]; A[k][p] = c * u - s * w; A[k][q] = s * u + c * w; }
+      for (let k = 0; k < n; k++) { const u = A[p][k], w = A[q][k]; A[p][k] = c * u - s * w; A[q][k] = s * u + c * w; }
+      for (let k = 0; k < n; k++) { const u = V[k][p], w = V[k][q]; V[k][p] = c * u - s * w; V[k][q] = s * u + c * w; }
+      A[p][q] = A[q][p] = 0;
+      steps.push({ A: N.clone(A), p, q, off: offNorm(A) });
+    }
+    return { A, V, steps };
+  };
+  function offNorm(A) { let s = 0; A.forEach((r, i) => r.forEach((a, j) => { if (i !== j) s += a * a; })); return Math.sqrt(s); }
+  N.offNorm = offNorm;
+
+  /* ---------- floating point ---------- */
+  /** Round x to the system (beta, p, L, U). mode: 'nearest' (ties to even), 'chop' (toward 0), 'up' (+inf), 'down' (-inf), 'away'.
+      Returns {v, flag} with flag '', 'overflow', 'underflow' (flushed to 0) or 'subnormal'. */
+  N.fpRound = function (x, sys) {
+    const { beta, p, L, U, mode = "nearest", subnormal = false } = sys;
+    if (x === 0 || !Number.isFinite(x)) return { v: x, flag: "" };
+    const s = Math.sign(x), a = Math.abs(x), ufl = Math.pow(beta, L), ofl = Math.pow(beta, U + 1) * (1 - Math.pow(beta, -p));
+    const up = (mode === "up" && s > 0) || (mode === "down" && s < 0) || mode === "away";   // round away from zero?
+    function rnd(m) {                                   // m > 0 real -> integer by the rounding rule
+      const r0 = Math.round(m); if (Math.abs(m - r0) <= 1e-12 * Math.max(1, m)) return r0;
+      const fl = Math.floor(m), fr = m - fl;
+      if (mode === "nearest") return fr > 0.5 ? fl + 1 : fr < 0.5 ? fl : (fl % 2 ? fl + 1 : fl);
+      return up ? fl + 1 : fl;
+    }
+    let e = Math.floor(Math.log(a) / Math.log(beta));
+    if (Math.pow(beta, e) > a) e--; if (Math.pow(beta, e + 1) <= a) e++;
+    let v, flag = "";
+    if (e < L && !subnormal) {                          // only 0 and UFL are candidates
+      const toUfl = mode === "nearest" ? a >= ufl / 2 : up; v = toUfl ? s * ufl : 0; flag = "underflow";
+    } else {
+      const ee = Math.max(e, L), ulp = Math.pow(beta, ee - p + 1), r = rnd(a / ulp); v = s * r * ulp;
+      if (e < L) flag = r === 0 ? "underflow" : "subnormal";
+    }
+    if (Math.abs(v) > ofl * (1 + 1e-12)) { v = (mode === "chop" || (!up && mode !== "nearest")) ? s * ofl : s * Infinity; flag = "overflow"; }
+    return { v, flag };
+  };
+  /** Positive numbers of a system, sorted. */
+  N.fpList = function (beta, p, L, U, subnormal = false) {
+    const out = [];
+    for (let e = L; e <= U; e++) for (let m = Math.pow(beta, p - 1); m < Math.pow(beta, p); m++) out.push(m * Math.pow(beta, e - p + 1));
+    if (subnormal) for (let m = 1; m < Math.pow(beta, p - 1); m++) out.push(m * Math.pow(beta, L - p + 1));
+    return out.sort((a, b) => a - b);
+  };
+  N.fpCount = (beta, p, L, U) => 2 * (beta - 1) * Math.pow(beta, p - 1) * (U - L + 1) + 1;
+  /** Digits of x in base beta (from a decimal string, exact via BigInt rationals): {sign, int: [...], frac: [...], period: start index or -1}. */
+  N.toBase = function (str, beta, maxFrac = 40) {
+    const m = String(str).trim().match(/^([-+]?)(\d*)(?:\.(\d*))?(?:[eE]([-+]?\d+))?$/);
+    if (!m || (m[2] === "" && (m[3] || "") === "")) throw new Error("not a decimal number");
+    let num = BigInt((m[2] || "0") + (m[3] || "")), den = 10n ** BigInt((m[3] || "").length);
+    const ex = parseInt(m[4] || "0", 10); if (ex > 0) num *= 10n ** BigInt(ex); else if (ex < 0) den *= 10n ** BigInt(-ex);
+    const B = BigInt(beta); let ip = num / den, r = num % den; const int = [];
+    if (ip === 0n) int.push(0); while (ip > 0n) { int.unshift(Number(ip % B)); ip /= B; }
+    const frac = [], seen = new Map(); let period = -1;
+    while (r !== 0n && frac.length < maxFrac) { const key = r.toString(); if (seen.has(key)) { period = seen.get(key); break; } seen.set(key, frac.length); r *= B; frac.push(Number(r / den)); r %= den; }
+    return { sign: m[1] === "-" ? "-" : "", int, frac, period, terminated: r === 0n };
+  };
+  N.digitChar = d => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[d];
+
+  /* ---------- nonlinear equations (1-D and 2-D) ---------- */
+  N.bisect = function (f, a, b, n) { const st = []; let fa = f(a); for (let k = 0; k < n; k++) { const m = a + (b - a) / 2, fm = f(m); st.push({ a, b, m, fa, fm }); if (fm === 0) break; if (Math.sign(fm) === Math.sign(fa)) { a = m; fa = fm; } else b = m; } return st; };
+  N.newton1 = function (f, df, x, n) { const st = [{ x, fx: f(x) }]; for (let k = 0; k < n; k++) { const d = df(x); if (!d) break; x = x - f(x) / d; st.push({ x, fx: f(x) }); if (!Number.isFinite(x)) break; } return st; };
+  N.secant = function (f, x0, x1, n) { const st = [{ x: x0, fx: f(x0) }, { x: x1, fx: f(x1) }]; for (let k = 0; k < n; k++) { const [p, q] = st.slice(-2); if (q.fx === p.fx) break; const x = q.x - q.fx * (q.x - p.x) / (q.fx - p.fx); st.push({ x, fx: f(x) }); if (!Number.isFinite(x)) break; } return st; };
+  /** Inverse quadratic interpolation: fit x as a quadratic in y through the last three points, evaluate at y = 0. */
+  N.iqi = function (f, x0, x1, x2, n) {
+    const st = [x0, x1, x2].map(x => ({ x, fx: f(x) }));
+    let a = st[0], b = st[1], c = st[2];              // Heath 5.5.5: new -> b, old b -> a, old a -> c
+    for (let k = 0; k < n; k++) {
+      const fa = a.fx, fb = b.fx, fc = c.fx;
+      if (fa === fb || fb === fc || fa === fc) break;
+      const x = a.x * fb * fc / ((fa - fb) * (fa - fc)) + b.x * fa * fc / ((fb - fa) * (fb - fc)) + c.x * fa * fb / ((fc - fa) * (fc - fb));
+      const nw = { x, fx: f(x), used: [a.x, b.x, c.x] }; st.push(nw); [a, b, c] = [b, nw, a]; if (!Number.isFinite(x)) break;
+    }
+    return st;
+  };
+  /** Linear fractional interpolation: fit phi(x) = (x - u)/(v x - w) through three points; next iterate is u (Heath 5.5.6). */
+  N.linfrac = function (f, x0, x1, x2, n) {
+    const st = [x0, x1, x2].map(x => ({ x, fx: f(x) }));
+    for (let k = 0; k < n; k++) {
+      const [A, B, C] = st.slice(-3); const a = A.x, b = B.x, c = C.x, fa = A.fx, fb = B.fx, fc = C.fx;
+      const d = (a - c) * (fc - fb) * fa - (b - c) * (fc - fa) * fb; if (!d) break;   // Heath (5.5.6): c <- c + h
+      const x = c + (a - c) * (b - c) * (fa - fb) * fc / d; st.push({ x, fx: f(x) }); if (!Number.isFinite(x)) break;
+    }
+    return st;
+  };
+  N.newton2 = function (F, J, x, n) { const st = [{ x, F: F(x) }]; for (let k = 0; k < n; k++) { const s = N.solve(J(x), N.scale(F(x), -1)); if (!s) break; x = N.add(x, s); st.push({ x, F: F(x), s }); if (!x.every(Number.isFinite)) break; } return st; };
+  N.broyden = function (F, B, x, n) {
+    B = N.clone(B); const st = [{ x, F: F(x), B: N.clone(B) }];
+    for (let k = 0; k < n; k++) {
+      const Fx = F(x), s = N.solve(B, N.scale(Fx, -1)); if (!s) break;
+      const xn = N.add(x, s), Fn = F(xn), y = N.add(Fn, Fx, -1), Bs = N.mv(B, s), ss = N.dot(s, s); if (!ss) break;
+      B = B.map((r, i) => r.map((b, j) => b + (y[i] - Bs[i]) * s[j] / ss));
+      x = xn; st.push({ x, F: Fn, B: N.clone(B), s }); if (!x.every(Number.isFinite)) break;
+    }
+    return st;
+  };
+
+  /* ---------- polynomials and interpolation ---------- */
+  N.polyval = (c, x) => c.reduceRight((s, a) => s * x + a, 0);   // c[0] + c[1] x + ...
+  N.chebT = (k, x) => k === 0 ? 1 : k === 1 ? x : (() => { let a = 1, b = x; for (let j = 2; j <= k; j++) [a, b] = [b, 2 * x * b - a]; return b; })();
+  N.chebNodes = (n, a = -1, b = 1) => [...Array(n).keys()].map(i => (a + b) / 2 + (b - a) / 2 * Math.cos((2 * i + 1) * Math.PI / (2 * n))).reverse();
+  N.binom = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
+  N.bernstein = (n, k, t) => N.binom(n, k) * Math.pow(t, k) * Math.pow(1 - t, n - k);
+  /** Newton divided differences; returns the coefficients (top diagonal) and the full table. */
+  N.divdiff = function (x, y) { const n = x.length, T = [y.slice()]; for (let j = 1; j < n; j++) { const prev = T[j - 1], col = []; for (let i = 0; i < n - j; i++) col.push((prev[i + 1] - prev[i]) / (x[i + j] - x[i])); T.push(col); } return { c: T.map(c => c[0]), table: T }; };
+  N.newtonEval = (xs, c, x) => { let s = c[c.length - 1]; for (let k = c.length - 2; k >= 0; k--) s = s * (x - xs[k]) + c[k]; return s; };
+  N.lagrangeBasis = (xs, j, x) => xs.reduce((p, xi, i) => i === j ? p : p * (x - xi) / (xs[j] - xi), 1);
+  /** Cox-de Boor B-spline basis of degree k on knot vector t. */
+  N.bspl = function (t, i, k, x) {
+    if (k === 0) return (t[i] <= x && x < t[i + 1]) || (x === t[t.length - 1] && t[i] < x && x <= t[i + 1]) ? 1 : 0;
+    let a = 0, b = 0;
+    if (t[i + k] !== t[i]) a = (x - t[i]) / (t[i + k] - t[i]) * N.bspl(t, i, k - 1, x);
+    if (t[i + k + 1] !== t[i + 1]) b = (t[i + k + 1] - x) / (t[i + k + 1] - t[i + 1]) * N.bspl(t, i + 1, k - 1, x);
+    return a + b;
+  };
+  /** Natural cubic spline; returns an evaluator with .d (first derivative). */
+  N.spline = function (x, y) {
+    const n = x.length - 1, h = [...Array(n).keys()].map(i => x[i + 1] - x[i]), M = new Array(n + 1).fill(0);
+    if (n >= 2) {
+      const A = N.zeros(n - 1, n - 1), r = [];
+      for (let i = 1; i < n; i++) { A[i - 1][i - 1] = 2 * (h[i - 1] + h[i]); if (i > 1) A[i - 1][i - 2] = h[i - 1]; if (i < n - 1) A[i - 1][i] = h[i]; r.push(6 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1])); }
+      N.solve(A, r).forEach((v, i) => M[i + 1] = v);
+    }
+    const seg = t => { let i = 0; while (i < n - 1 && t > x[i + 1]) i++; return i; };
+    const ev = t => { const i = seg(t), a = x[i + 1] - t, b = t - x[i], hi = h[i]; return M[i] * a ** 3 / (6 * hi) + M[i + 1] * b ** 3 / (6 * hi) + (y[i] / hi - M[i] * hi / 6) * a + (y[i + 1] / hi - M[i + 1] * hi / 6) * b; };
+    ev.d = t => { const i = seg(t), a = x[i + 1] - t, b = t - x[i], hi = h[i]; return -M[i] * a * a / (2 * hi) + M[i + 1] * b * b / (2 * hi) - (y[i] / hi - M[i] * hi / 6) + (y[i + 1] / hi - M[i + 1] * hi / 6); };
+    return ev;
+  };
+  /** Monotone piecewise cubic Hermite (Fritsch-Carlson). Returns evaluator with .d */
+  N.pchip = function (x, y) {
+    const n = x.length, h = [], del = [], d = new Array(n).fill(0);
+    for (let i = 0; i < n - 1; i++) { h.push(x[i + 1] - x[i]); del.push((y[i + 1] - y[i]) / h[i]); }
+    if (n === 2) d[0] = d[1] = del[0];
+    else {
+      for (let i = 1; i < n - 1; i++) if (del[i - 1] * del[i] > 0) { const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1]; d[i] = (w1 + w2) / (w1 / del[i - 1] + w2 / del[i]); }
+      const end = (h0, h1, d0, d1) => { let v = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1); if (Math.sign(v) !== Math.sign(d0)) v = 0; else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(v) > Math.abs(3 * d0)) v = 3 * d0; return v; };
+      d[0] = end(h[0], h[1], del[0], del[1]); d[n - 1] = end(h[n - 2], h[n - 3], del[n - 2], del[n - 3]);
+    }
+    const seg = t => { let i = 0; while (i < n - 2 && t > x[i + 1]) i++; return i; };
+    const ev = t => { const i = seg(t), s = (t - x[i]) / h[i], h00 = (1 + 2 * s) * (1 - s) ** 2, h10 = s * (1 - s) ** 2, h01 = s * s * (3 - 2 * s), h11 = s * s * (s - 1); return h00 * y[i] + h10 * h[i] * d[i] + h01 * y[i + 1] + h11 * h[i] * d[i + 1]; };
+    ev.d = t => { const i = seg(t), s = (t - x[i]) / h[i]; return ((6 * s * s - 6 * s) * y[i] + (3 * s * s - 4 * s + 1) * h[i] * d[i] + (6 * s - 6 * s * s) * y[i + 1] + (3 * s * s - 2 * s) * h[i] * d[i + 1]) / h[i]; };
+    ev.slopes = d; return ev;
+  };
+  /** Least squares polynomial fit of degree deg; returns coefficients c[0..deg]. */
+  N.polyfit = (x, y, deg) => N.lstsq(x.map(t => [...Array(deg + 1).keys()].map(k => t ** k)), y);
+  N.polyder = c => c.slice(1).map((a, k) => a * (k + 1));
+
+  /* ---------- quadrature and differentiation ---------- */
+  /** Newton-Cotes closed rule with n+1 equally spaced nodes on [a,b] (weights by solving the moment equations). */
+  N.ncWeights = function (n) { if (n === 0) return [1]; const x = [...Array(n + 1).keys()].map(i => i / n); const V = [...Array(n + 1).keys()].map(k => x.map(t => t ** k)); return N.solve(V, [...Array(n + 1).keys()].map(k => 1 / (k + 1))); };
+  N.trap = (f, a, b, m) => { const h = (b - a) / m; let s = (f(a) + f(b)) / 2; for (let i = 1; i < m; i++) s += f(a + i * h); return s * h; };
+  /** Romberg table R[i][j], i = 0..levels-1 (trapezoid with 2^i panels in column 0). */
+  N.romberg = function (f, a, b, levels) { const R = []; for (let i = 0; i < levels; i++) { R.push([N.trap(f, a, b, 2 ** i)]); for (let j = 1; j <= i; j++) R[i].push(R[i][j - 1] + (R[i][j - 1] - R[i - 1][j - 1]) / (4 ** j - 1)); } return R; };
+  /** Integral by high-order Gauss-Legendre on many panels (reference values for the modules). */
+  N.integrate = function (f, a, b, panels = 200) {
+    const g = [[-0.9061798459386640, 0.2369268850561891], [-0.5384693101056831, 0.4786286704993665], [0, 0.5688888888888889], [0.5384693101056831, 0.4786286704993665], [0.9061798459386640, 0.2369268850561891]];
+    const h = (b - a) / panels; let s = 0; for (let i = 0; i < panels; i++) { const c = a + (i + 0.5) * h; for (const [x, w] of g) s += w * f(c + x * h / 2); } return s * h / 2;
+  };
+  /** Seeded PRNG (mulberry32) so the Monte Carlo modules are reproducible. */
+  N.rng = function (seed = 301) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+
+  /* ---------- 1-D optimization ---------- */
+  N.golden = function (f, a, b, n) {
+    const tau = (Math.sqrt(5) - 1) / 2, st = []; let x1 = a + (1 - tau) * (b - a), x2 = a + tau * (b - a), f1 = f(x1), f2 = f(x2);
+    for (let k = 0; k < n; k++) { st.push({ a, b, x1, x2, f1, f2 }); if (f1 > f2) { a = x1; x1 = x2; f1 = f2; x2 = a + tau * (b - a); f2 = f(x2); } else { b = x2; x2 = x1; f2 = f1; x1 = a + (1 - tau) * (b - a); f1 = f(x1); } }
+    st.push({ a, b, x1, x2, f1, f2 }); return st;
+  };
+  N.spi = function (f, u, v, w, n) {
+    const st = [[u, v, w].map(x => ({ x, fx: f(x) }))];
+    for (let k = 0; k < n; k++) {
+      const [A, B, C] = st[st.length - 1]; const p = (B.x - A.x) ** 2 * (B.fx - C.fx) - (B.x - C.x) ** 2 * (B.fx - A.fx), q = 2 * ((B.x - A.x) * (B.fx - C.fx) - (B.x - C.x) * (B.fx - A.fx));
+      if (!q) break; const x = B.x - p / q; st.push([B, C, { x, fx: f(x) }]); if (!Number.isFinite(x)) break;
+    }
+    return st;
+  };
+
+  /* ---------- formatting ---------- */
+  function fmt(v, d = 4) {
+    if (v === undefined || v === null) return ""; if (typeof v !== "number") return String(v);
+    if (!Number.isFinite(v)) return Number.isNaN(v) ? "NaN" : (v > 0 ? "Inf" : "-Inf");
+    if (v === 0) return "0"; const a = Math.abs(v);
+    const strip = t => t.replace(/(\.\d*?)0+(e|$)/, "$1$2").replace(/\.(e|$)/, "$1");
+    if (a >= 1e5 || a < 1e-4) return strip(v.toExponential(Math.max(0, d - 1))).replace("e+", "e");
+    const s = v.toPrecision(d); return s.includes("e") ? strip(v.toExponential(d - 1)).replace("e+", "e") : strip(s);
+  }
+  N.fmt = fmt;
+  N.fmtc = (z, d = 4) => z.im ? `${fmt(z.re, d)} ${z.im < 0 ? "−" : "+"} ${fmt(Math.abs(z.im), d)}i` : fmt(z.re, d);
+  return N;
+})();
+if (typeof module !== "undefined") module.exports = N;
+
+/* UI core for the CSc 301 IEM rebuilds: canvas plots, controls, and the tabbed module page.
+   A module is {id, title, ref, desc, tries, init(ctx)}; init builds its controls and returns draw(). */
+const UI = (() => {
+  "use strict";
+  const UI = {};
+  const root = document.documentElement;
+  UI.css = name => getComputedStyle(root).getPropertyValue(name).trim() || "#888";
+  UI.el = function (tag, attrs = {}, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") e.className = v; else if (k === "html") e.innerHTML = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+    return e;
+  };
+  const el = UI.el, fmt = N.fmt;
+
+  /* ---------- plots ---------- */
+  function niceTicks(a, b, n = 6) {
+    const span = b - a; if (!(span > 0)) return [a];
+    const step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0))), r = step0 / mag;
+    const step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * mag, out = [];
+    for (let t = Math.ceil(a / step) * step; t <= b + step * 1e-9; t += step) out.push(Math.abs(t) < step * 1e-9 ? 0 : t);
+    return out;
+  }
+  UI.niceTicks = niceTicks;
+  const tickLabel = (t, step) => { const d = Math.max(0, -Math.floor(Math.log10(step) + 1e-9)); return Math.abs(t) >= 1e5 || (Math.abs(t) < 1e-3 && t) ? t.toExponential(1).replace("e+", "e") : t.toFixed(Math.min(d, 6)); };
+  UI.Plot = class {
+    constructor(canvas, o = {}) { this.c = canvas; this.o = Object.assign({ pad: [14, 14, 34, 50], logx: false, logy: false, equal: false, grid: true, axes: true }, o); this.v = [0, 1, 0, 1]; }
+    view(x0, x1, y0, y1) { this.v = [x0, x1, y0, y1]; return this; }
+    tx(x) { return this.o.logx ? Math.log10(x) : x; } ty(y) { return this.o.logy ? Math.log10(y) : y; }
+    X(x) { const [a, b] = this.lv; return this.L + (this.tx(x) - a) / (b - a) * this.W; }
+    Y(y) { const [, , c, d] = this.lv; return this.T + (1 - (this.ty(y) - c) / (d - c)) * this.H; }
+    inv(px, py) { const [a, b, c, d] = this.lv; let x = a + (px - this.L) / this.W * (b - a), y = c + (1 - (py - this.T) / this.H) * (d - c); if (this.o.logx) x = 10 ** x; if (this.o.logy) y = 10 ** y; return [x, y]; }
+    begin(xlabel = "", ylabel = "") {
+      const c = this.c, r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+      const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+      if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+      const g = this.g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.w = r.width; this.h = r.height; const [pt, pr, pb, pl] = this.o.pad;
+      this.L = pl; this.T = pt; this.W = Math.max(10, this.w - pl - pr); this.H = Math.max(10, this.h - pt - pb);
+      let [a, b, cc, d] = this.v; if (this.o.logx) { a = Math.log10(a); b = Math.log10(b); } if (this.o.logy) { cc = Math.log10(cc); d = Math.log10(d); }
+      if (this.o.equal) { const sx = (b - a) / this.W, sy = (d - cc) / this.H, s = Math.max(sx, sy), mx = (a + b) / 2, my = (cc + d) / 2; a = mx - s * this.W / 2; b = mx + s * this.W / 2; cc = my - s * this.H / 2; d = my + s * this.H / 2; }
+      this.lv = [a, b, cc, d];
+      g.clearRect(0, 0, this.w, this.h); g.fillStyle = UI.css("--surface"); g.fillRect(0, 0, this.w, this.h);
+      g.font = `11px ${UI.css("--mono")}`; g.lineWidth = 1;
+      const axis = (lo, hi, log) => {
+        if (!log) return niceTicks(lo, hi, 6);
+        const dec = hi - lo, mults = dec <= 1.3 ? [1, 2, 3, 5] : dec <= 3.2 ? [1, 2, 5] : [1], out = [];
+        for (let k = Math.floor(lo); k <= Math.ceil(hi); k++) for (const m of mults) { const t = k + Math.log10(m); if (t >= lo - 1e-9 && t <= hi + 1e-9) out.push(t); }
+        if (out.length > 9) { const st = Math.ceil(out.length / 8); return out.filter((t, i) => i % st === 0); }
+        return out;
+      };
+      const logLabel = t => { const v = 10 ** t, k = Math.floor(t + 1e-9), m = Math.round(v / 10 ** k); return Math.abs(t) < 3.5 ? N.fmt(v, 2) : (m === 1 ? "1e" : m + "e") + k; };
+      const xt = axis(a, b, this.o.logx), yt = axis(cc, d, this.o.logy);
+      const lx = t => this.L + (t - a) / (b - a) * this.W, ly = t => this.T + (1 - (t - cc) / (d - cc)) * this.H;
+      if (this.o.grid) { const yt2 = this.o.yticks === false ? [] : yt; g.strokeStyle = UI.css("--grid"); g.beginPath(); for (const t of xt) { g.moveTo(lx(t) + 0.5, this.T); g.lineTo(lx(t) + 0.5, this.T + this.H); } for (const t of yt2) { g.moveTo(this.L, ly(t) + 0.5); g.lineTo(this.L + this.W, ly(t) + 0.5); } g.stroke(); }
+      g.strokeStyle = UI.css("--line"); g.strokeRect(this.L + 0.5, this.T + 0.5, this.W, this.H);
+      if (this.o.axes && !this.o.logx && !this.o.logy) { g.strokeStyle = UI.css("--muted"); g.globalAlpha = 0.5; g.beginPath(); if (a < 0 && b > 0) { g.moveTo(lx(0), this.T); g.lineTo(lx(0), this.T + this.H); } if (cc < 0 && d > 0) { g.moveTo(this.L, ly(0)); g.lineTo(this.L + this.W, ly(0)); } g.stroke(); g.globalAlpha = 1; }
+      g.fillStyle = UI.css("--muted"); g.textAlign = "center"; g.textBaseline = "top";
+      const xs = xt.length > 1 ? xt[1] - xt[0] : 1, ys = yt.length > 1 ? yt[1] - yt[0] : 1;
+      if (this.o.xticks !== false) for (const t of xt) g.fillText(this.o.logx ? logLabel(t) : tickLabel(t, xs), lx(t), this.T + this.H + 5);
+      g.textAlign = "right"; g.textBaseline = "middle";
+      if (this.o.yticks !== false) for (const t of yt) g.fillText(this.o.logy ? logLabel(t) : tickLabel(t, ys), this.L - 5, ly(t));
+      g.font = `12px ${UI.css("--body")}`;
+      if (xlabel) { g.textAlign = "right"; g.textBaseline = "bottom"; g.fillText(xlabel, this.L + this.W, this.h - 1); }
+      if (ylabel) { g.save(); g.translate(11, this.T); g.rotate(-Math.PI / 2); g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(ylabel, 0, 0); g.restore(); }
+      g.save(); g.beginPath(); g.rect(this.L, this.T, this.W, this.H); g.clip();
+      return this;
+    }
+    end() { this.g.restore(); return this; }
+    sty(o = {}) { const g = this.g; g.strokeStyle = g.fillStyle = o.color ? (o.color.startsWith("--") ? UI.css(o.color) : o.color) : UI.css("--c1"); g.lineWidth = o.width || 2; g.setLineDash(o.dash || []); g.globalAlpha = o.alpha ?? 1; return g; }
+    line(xs, ys, o = {}) {
+      const g = this.sty(o); g.beginPath(); let pen = false;
+      for (let i = 0; i < xs.length; i++) { const X = this.X(xs[i]), Y = this.Y(ys[i]); if (!Number.isFinite(X) || !Number.isFinite(Y) || Math.abs(Y) > 1e5) { pen = false; continue; } pen ? g.lineTo(X, Y) : g.moveTo(X, Y); pen = true; }
+      g.stroke(); g.setLineDash([]); g.globalAlpha = 1; return this;
+    }
+    fn(f, a, b, o = {}) { const n = o.n || 400, xs = [], ys = []; for (let i = 0; i <= n; i++) { const x = this.o.logx ? a * (b / a) ** (i / n) : a + (b - a) * i / n; xs.push(x); let y; try { y = f(x); } catch (e) { y = NaN; } ys.push(y); } return this.line(xs, ys, o); }
+    fill(xs, ys, o = {}) { const g = this.sty(o); g.globalAlpha = o.alpha ?? 0.25; g.beginPath(); xs.forEach((x, i) => i ? g.lineTo(this.X(x), this.Y(ys[i])) : g.moveTo(this.X(x), this.Y(ys[i]))); g.closePath(); g.fill(); if (o.stroke) { g.globalAlpha = 1; g.lineWidth = o.width || 1; g.stroke(); } g.globalAlpha = 1; return this; }
+    pts(xs, ys, o = {}) { const g = this.sty(o), r = o.r || 4; for (let i = 0; i < xs.length; i++) { const X = this.X(xs[i]), Y = this.Y(ys[i]); if (!Number.isFinite(X) || !Number.isFinite(Y)) continue; g.beginPath(); g.arc(X, Y, r, 0, 7); if (o.hollow) { g.lineWidth = 1.6; g.fillStyle = UI.css("--surface"); g.fill(); g.stroke(); } else g.fill(); } g.globalAlpha = 1; return this; }
+    seg(x1, y1, x2, y2, o = {}) { return this.line([x1, x2], [y1, y2], o); }
+    arrow(x1, y1, x2, y2, o = {}) {
+      const g = this.sty(o), X1 = this.X(x1), Y1 = this.Y(y1), X2 = this.X(x2), Y2 = this.Y(y2), L = Math.hypot(X2 - X1, Y2 - Y1); if (L < 1) return this;
+      const ux = (X2 - X1) / L, uy = (Y2 - Y1) / L, hd = Math.min(10, L / 2);
+      g.beginPath(); g.moveTo(X1, Y1); g.lineTo(X2 - ux * hd * 0.8, Y2 - uy * hd * 0.8); g.stroke();
+      g.beginPath(); g.moveTo(X2, Y2); g.lineTo(X2 - ux * hd - uy * hd * 0.45, Y2 - uy * hd + ux * hd * 0.45); g.lineTo(X2 - ux * hd + uy * hd * 0.45, Y2 - uy * hd - ux * hd * 0.45); g.closePath(); g.fill(); g.globalAlpha = 1; return this;
+    }
+    vline(x, o = {}) { const g = this.sty(o), X = this.X(x); g.beginPath(); g.moveTo(X, this.T); g.lineTo(X, this.T + this.H); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; return this; }
+    hline(y, o = {}) { const g = this.sty(o), Y = this.Y(y); g.beginPath(); g.moveTo(this.L, Y); g.lineTo(this.L + this.W, Y); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; return this; }
+    text(x, y, s, o = {}) { const g = this.sty(o); g.font = o.font || `${o.bold ? 600 : 400} ${o.size || 12}px ${UI.css(o.mono ? "--mono" : "--body")}`; g.textAlign = o.align || "left"; g.textBaseline = o.base || "middle"; g.fillText(s, this.X(x) + (o.dx || 0), this.Y(y) + (o.dy || 0)); g.globalAlpha = 1; return this; }
+    /** Pixel-space label (relative to the plot area's top left). */
+    note(s, o = {}) { const g = this.sty(Object.assign({ color: "--muted" }, o)); g.font = `${o.bold ? 600 : 400} ${o.size || 12}px ${UI.css(o.mono ? "--mono" : "--body")}`; g.textAlign = o.align || "left"; g.textBaseline = "top"; const x = o.right ? this.L + this.W - 8 : this.L + 8; if (o.right) g.textAlign = "right"; g.fillText(s, x, this.T + 6 + (o.line || 0) * 16); g.globalAlpha = 1; return this; }
+    /** Level curves f(x, y) = c for each c in levels (marching squares on an nx × ny grid). */
+    contour(f, levels, o = {}) {
+      const [a, b, c, d] = this.v, nx = o.nx || 120, ny = o.ny || Math.round(nx * this.H / this.W) || 90, hx = (b - a) / nx, hy = (d - c) / ny;
+      const F = []; for (let j = 0; j <= ny; j++) { const row = []; for (let i = 0; i <= nx; i++) { let v; try { v = f(a + i * hx, c + j * hy); } catch (e) { v = NaN; } row.push(v); } F.push(row); }
+      const g = this.sty(o); levels.forEach((lev, li) => {
+        if (o.colors) g.strokeStyle = UI.css(o.colors[li % o.colors.length]);
+        g.beginPath();
+        for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+          const v = [F[j][i] - lev, F[j][i + 1] - lev, F[j + 1][i + 1] - lev, F[j + 1][i] - lev]; if (v.some(t => !Number.isFinite(t))) continue;
+          const P = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], pts = [];
+          for (let e = 0; e < 4; e++) { const p = v[e], q = v[(e + 1) % 4]; if ((p < 0) !== (q < 0)) { const t = p / (p - q), A = P[e], B = P[(e + 1) % 4]; pts.push([a + (A[0] + t * (B[0] - A[0])) * hx, c + (A[1] + t * (B[1] - A[1])) * hy]); } }
+          for (let k = 0; k + 1 < pts.length; k += 2) { g.moveTo(this.X(pts[k][0]), this.Y(pts[k][1])); g.lineTo(this.X(pts[k + 1][0]), this.Y(pts[k + 1][1])); }
+        }
+        g.stroke();
+      });
+      g.setLineDash([]); g.globalAlpha = 1; return this;
+    }
+    /** Pointer events in data coordinates: cb(type, x, y, event) with type down/move/up. */
+    onPointer(cb) {
+      const c = this.c; let down = false;
+      const pos = e => { const r = c.getBoundingClientRect(); return this.inv(e.clientX - r.left, e.clientY - r.top); };
+      c.addEventListener("pointerdown", e => { down = true; c.setPointerCapture(e.pointerId); cb("down", ...pos(e), e); });
+      c.addEventListener("pointermove", e => cb(down ? "drag" : "move", ...pos(e), e));
+      c.addEventListener("pointerup", e => { if (down) { down = false; cb("up", ...pos(e), e); } });
+      return this;
+    }
+    /** Distance in pixels between data points. */
+    pxDist(x1, y1, x2, y2) { return Math.hypot(this.X(x1) - this.X(x2), this.Y(y1) - this.Y(y2)); }
+  };
+  /** Range of finite values with padding. */
+  UI.range = function (vals, pad = 0.08, fallback = [-1, 1]) {
+    const v = vals.flat(Infinity).filter(Number.isFinite); if (!v.length) return fallback;
+    let a = Math.min(...v), b = Math.max(...v); if (a === b) { a -= 1; b += 1; } const p = (b - a) * pad; return [a - p, b + p];
+  };
+
+  /** Draw matrices side by side on a canvas: mats = [{M, title, hl(i,j) -> css colour var or null, sep (column index of a bar), d (digits)}].
+      Cells are tinted by |entry| / max|entry|; exact zeros are left blank. */
+  UI.drawMats = function (canvas, mats, o = {}) {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const W = Math.max(10, r.width), maxCols = mats.reduce((s, m) => s + m.M[0].length, 0), gapW = 26 * (mats.length - 1) + 24;
+    const cw = Math.min(o.cell || 64, (W - gapW) / maxCols), ch = Math.min(30, cw * 0.55 + 8), rows = Math.max(...mats.map(m => m.M.length));
+    const H = rows * ch + 30; canvas.style.aspectRatio = "auto"; canvas.style.height = H + "px";
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = UI.css("--surface"); g.fillRect(0, 0, W, H);
+    const total = mats.reduce((s, m) => s + m.M[0].length * cw, 0) + 26 * (mats.length - 1); let x0 = Math.max(12, (W - total) / 2);
+    const fs = Math.max(9, Math.min(13, cw / 5.2));
+    for (const m of mats) {
+      const M = m.M, n = M.length, k = M[0].length, mx = Math.max(1e-300, ...M.flat().map(Math.abs).filter(Number.isFinite)), y0 = 24;
+      g.fillStyle = UI.css("--muted"); g.font = `600 12px ${UI.css("--body")}`; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillText(m.title || "", x0 + k * cw / 2, 15);
+      for (let i = 0; i < n; i++) for (let j = 0; j < k; j++) {
+        const v = M[i][j], x = x0 + j * cw, y = y0 + i * ch, tiny = Math.abs(v) <= (o.zero ?? 1e-13) * mx;
+        if (!tiny) { g.globalAlpha = 0.07 + 0.33 * Math.min(1, Math.abs(v) / mx); g.fillStyle = UI.css(v < 0 ? "--c2" : "--c1"); g.fillRect(x + 1, y + 1, cw - 2, ch - 2); g.globalAlpha = 1; }
+        const h = m.hl && m.hl(i, j); if (h) { g.strokeStyle = UI.css(h); g.lineWidth = 2.2; g.strokeRect(x + 2, y + 2, cw - 4, ch - 4); }
+        g.fillStyle = UI.css(tiny ? "--muted" : "--ink"); g.font = `${fs}px ${UI.css("--mono")}`; g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillText(tiny ? (v === 0 ? "0" : "≈0") : N.fmt(v, m.d || 4), x + cw / 2, y + ch / 2);
+      }
+      g.strokeStyle = UI.css("--muted"); g.lineWidth = 1.4; g.beginPath();
+      const yb = y0 + n * ch; g.moveTo(x0 + 5, y0); g.lineTo(x0, y0); g.lineTo(x0, yb); g.lineTo(x0 + 5, yb);
+      g.moveTo(x0 + k * cw - 5, y0); g.lineTo(x0 + k * cw, y0); g.lineTo(x0 + k * cw, yb); g.lineTo(x0 + k * cw - 5, yb);
+      if (m.sep) { g.moveTo(x0 + m.sep * cw, y0); g.lineTo(x0 + m.sep * cw, yb); }
+      g.stroke();
+      x0 += k * cw + 26;
+    }
+  };
+
+  /* ---------- controls ---------- */
+  function wrapCtrl(label, input, valEl) { return el("div", { class: "ctrl" }, el("label", {}, el("span", {}, label), valEl || ""), input); }
+  UI.slider = function (o, onChange) {
+    const toPos = v => o.log ? Math.log10(v) : v, fromPos = p => o.log ? 10 ** p : p;
+    const inp = el("input", { type: "range", min: toPos(o.min), max: toPos(o.max), step: o.step ?? (o.log ? 0.01 : (o.max - o.min) / 100), value: toPos(o.value) });
+    const val = el("span", { class: "val" });
+    const c = { el: wrapCtrl(o.label, inp, val), get value() { const v = fromPos(+inp.value); return o.round ? o.round(v) : v; }, set value(v) { inp.value = toPos(v); show(); } };
+    const show = () => val.textContent = (o.fmt || fmt)(c.value);
+    inp.addEventListener("input", () => { show(); onChange && onChange(c.value); }); show(); return c;
+  };
+  UI.select = function (o, onChange) {
+    const s = el("select", {}, o.options.map(([v, t]) => el("option", { value: v }, t))); s.value = o.value ?? o.options[0][0];
+    s.addEventListener("change", () => onChange && onChange(s.value));
+    return { el: o.label ? wrapCtrl(o.label, s) : s, get value() { return s.value; }, set value(v) { s.value = v; }, input: s };
+  };
+  UI.input = function (o, onChange) {
+    const t = el("input", { type: o.type || "text", value: o.value, step: o.step, spellcheck: "false" });
+    const msg = el("span", { class: "val", style: "color:var(--err)" });
+    t.addEventListener(o.live ? "input" : "change", () => onChange && onChange(t.value));
+    t.addEventListener("keydown", e => { if (e.key === "Enter") onChange && onChange(t.value); });
+    return { el: wrapCtrl(o.label, t, msg), get value() { return o.type === "number" ? +t.value : t.value; }, set value(v) { t.value = v; }, error(s) { msg.textContent = s || ""; } };
+  };
+  UI.check = function (o, onChange) {
+    const c = el("input", { type: "checkbox" }); c.checked = !!o.value; c.addEventListener("change", () => onChange && onChange(c.checked));
+    return { el: el("label", { class: "check" }, c, o.label), get value() { return c.checked; }, set value(v) { c.checked = v; } };
+  };
+  UI.matrix = function (o, onChange) {
+    let rows = o.rows, cols = o.cols, cells = [];
+    const grid = el("div", { class: "matrix" });
+    function build(vals) {
+      grid.innerHTML = ""; grid.style.gridTemplateColumns = `repeat(${cols}, auto)`; cells = [];
+      for (let i = 0; i < rows; i++) { const r = []; for (let j = 0; j < cols; j++) { const inp = el("input", { type: "text", value: vals && vals[i] && vals[i][j] !== undefined ? +(+vals[i][j]).toPrecision(8) : 0, "aria-label": `${o.label || "entry"} ${i + 1},${j + 1}` }); inp.addEventListener("change", () => onChange && onChange()); r.push(inp); grid.append(inp); } cells.push(r); }
+    }
+    build(o.value);
+    const c = { el: o.label ? el("div", { class: "ctrl" }, el("div", { class: "lab" }, o.label), grid) : grid,
+      get value() { return cells.map(r => r.map(i => { try { return N.compile(N.parse(i.value), [])(); } catch (e) { return NaN; } })); },
+      set value(v) { rows = v.length; cols = v[0].length; build(v); }, resize(r, cc) { const v = c.value; rows = r; cols = cc; build(v); } };
+    return c;
+  };
+  UI.buttons = (list) => el("div", { class: "btns" }, list.map(([t, f, primary]) => el("button", { class: "b" + (primary ? " primary" : ""), type: "button", onclick: f }, t)));
+  UI.table = function (head, rows, hl = -1) {
+    return "<table><thead><tr>" + head.map(h => `<th>${h}</th>`).join("") + "</tr></thead><tbody>" +
+      rows.map((r, i) => `<tr${i === hl ? ' class="hl"' : ""}>` + r.map(c => `<td>${typeof c === "number" ? fmt(c, 7) : c}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+  };
+  /** Matrix as aligned text (for readouts). */
+  UI.mat = function (A, d = 4, hl) {
+    const s = A.map(r => r.map(v => fmt(Math.abs(v) < 1e-14 * 0 ? 0 : v, d))); const w = Math.max(...s.flat().map(t => t.length));
+    return s.map((r, i) => "[ " + r.map((t, j) => { const p = t.padStart(w); return hl && hl(i, j) ? `<span class="hl">${p}</span>` : p; }).join("  ") + " ]").join("\n");
+  };
+  UI.legend = items => el("div", { class: "legend" }, items.map(([c, t]) => el("span", { style: `--c:var(${c})` }, t)));
+  /** Parse an expression in vars, reporting errors on the input control. */
+  UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
+
+  /* ---------- page ---------- */
+  UI.page = function (cfg) {
+    document.title = cfg.title;
+    const tabs = el("nav", { class: "tabs", role: "tablist", "aria-label": "Modules" });
+    const host = el("div");
+    const wrap = el("div", { class: "wrap" },
+      el("header", {}, el("div", {}, el("h1", {}, cfg.title), el("p", { class: "sub" }, cfg.sub)), cfg.links ? el("p", { class: "sub", html: cfg.links }) : null),
+      tabs, host,
+      el("footer", { html: cfg.footer || "" }));
+    document.body.append(wrap);
+    const mods = cfg.modules, state = {};
+    function show(id) {
+      const m = mods.find(m => m.id === id) || mods[0];
+      [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
+      [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id]) {
+        const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        host.append(sec);
+        desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
+        const ctx = {
+          ctrls, plots, desc,
+          plot(cap, opts = {}) { const cv = el("canvas", { style: `aspect-ratio:${opts.aspect || "16 / 10"}`, role: "img", "aria-label": cap || m.title }); const box = el("div", { class: "plotbox" + (opts.half ? " half" : "") }, cap ? el("p", { class: "cap" }, cap) : null, cv); plots.append(box); const p = new UI.Plot(cv, opts); p.box = box; return p; },
+          canvas(cap) { const cv = el("canvas", { role: "img", "aria-label": cap || m.title }); const box = el("div", { class: "plotbox" }, cap ? el("p", { class: "cap" }, cap) : null, cv); plots.append(box); cv.box = box; return cv; },
+          add(...nodes) { ctrls.append(...nodes.filter(n => n).map(n => n.el || n)); },
+          readout(cap) { const r = el("div", { class: "readout" }); ctrls.append(cap ? el("div", { class: "ctrl" }, el("div", { class: "lab" }, cap), r) : r); return r; },
+          redraw: () => state[m.id] && state[m.id].draw(),
+        };
+        state[m.id] = { draw: () => {} };
+        let draw = () => {}; try { draw = m.init(ctx); } catch (e) { console.error(e); document.body.dataset.err = (document.body.dataset.err || "") + " | " + m.id + " init: " + e.message + " " + (e.stack || "").split("\n")[1]; } state[m.id].draw = () => { try { draw(); } catch (e) { console.error(e); document.body.dataset.err = (document.body.dataset.err || "") + " | " + m.id + ": " + e.message + " " + (e.stack || "").split("\n")[1]; } };
+      }
+      requestAnimationFrame(() => state[m.id].draw());
+      return m;
+    }
+    for (const m of mods) {
+      tabs.append(el("button", { type: "button", role: "tab", "data-id": m.id, onclick: () => { history.replaceState(null, "", "#" + m.id); show(m.id); } }, m.title));
+    }
+    const fromHash = () => show(decodeURIComponent(location.hash.slice(1).split("&")[0]) || mods[0].id);
+    window.addEventListener("hashchange", fromHash);
+    const redrawVisible = () => { const b = [...tabs.children].find(b => b.getAttribute("aria-selected") === "true"); if (b && state[b.dataset.id]) state[b.dataset.id].draw(); };
+    let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(redrawVisible, 60); });
+    try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawVisible); } catch (e) {}
+    new MutationObserver(redrawVisible).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawVisible);
+    fromHash();
+  };
+  return UI;
+})();
+
+/* MATH 246 helpers on top of the CSc 301 plotting core (num.js, ui.js): images, stem plots, directed graphs,
+   sparsity patterns and small vector/matrix utilities used by the lab pages. */
+const M2 = (() => {
+  "use strict";
+  const M2 = {};
+  const el = UI.el;
+
+  /* ---------- images ---------- */
+  let imgPromise = null;
+  /** The 160 x 160 astronaut image as {w, h, R, G, B, gray}: row-major Float64Arrays with values in [0, 1]. */
+  M2.image = function () {
+    if (imgPromise) return imgPromise;
+    imgPromise = new Promise((resolve, reject) => {
+      if (typeof IMG_ASTRONAUT === "undefined") { reject(new Error("no image on this page")); return; }
+      const im = new Image();
+      im.onload = () => {
+        const w = im.naturalWidth, h = im.naturalHeight, c = document.createElement("canvas"); c.width = w; c.height = h;
+        const g = c.getContext("2d"); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, w, h).data;
+        const R = new Float64Array(w * h), G = new Float64Array(w * h), B = new Float64Array(w * h), gray = new Float64Array(w * h);
+        for (let i = 0; i < w * h; i++) { R[i] = d[4 * i] / 255; G[i] = d[4 * i + 1] / 255; B[i] = d[4 * i + 2] / 255; gray[i] = 0.2125 * R[i] + 0.7154 * G[i] + 0.0721 * B[i]; }
+        resolve({ w, h, R, G, B, gray });
+      };
+      im.onerror = () => reject(new Error("image failed to load"));
+      im.src = IMG_ASTRONAUT;
+    });
+    return imgPromise;
+  };
+  /** Image as a 2-D array (rows) from a flat row-major channel. */
+  M2.rows = (flat, w, h) => Array.from({ length: h }, (_, i) => Array.from(flat.subarray ? flat.subarray(i * w, i * w + w) : flat.slice(i * w, i * w + w)));
+
+  /** Draw an image on a canvas, scaled to the canvas width with square pixels.
+      img = {w, h, gray} or {w, h, R, G, B} (flat arrays or 2-D row arrays); o = {vmin, vmax, cmap: "gray" | "grayr" | "diverge", marks(g, scale)}. */
+  M2.showImage = function (canvas, img, o = {}) {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, W = Math.max(10, r.width);
+    const maxH = o.maxH || W, scale = Math.min(W / img.w, maxH / img.h), H = img.h * scale;
+    canvas.style.aspectRatio = "auto"; canvas.style.height = H + "px";
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = UI.css("--surface"); g.fillRect(0, 0, W, H);
+    const off = document.createElement("canvas"); off.width = img.w; off.height = img.h;
+    const og = off.getContext("2d"), id = og.createImageData(img.w, img.h), d = id.data;
+    const at = (ch, i, j) => ch[i] !== undefined && Array.isArray(ch[0]) ? ch[i][j] : ch[i * img.w + j];
+    const vmin = o.vmin ?? 0, vmax = o.vmax ?? 1, cl = v => Math.max(0, Math.min(1, (v - vmin) / (vmax - vmin)));
+    for (let i = 0; i < img.h; i++) for (let j = 0; j < img.w; j++) {
+      const k = 4 * (i * img.w + j); let rr, gg, bb;
+      if (img.R) { rr = cl(at(img.R, i, j)); gg = cl(at(img.G, i, j)); bb = cl(at(img.B, i, j)); }
+      else {
+        const v = cl(at(img.gray, i, j));
+        if (o.cmap === "diverge") { const t = 2 * v - 1; if (t >= 0) { rr = 1; gg = bb = 1 - t; } else { bb = 1; rr = gg = 1 + t; } }
+        else if (o.cmap === "grayr") rr = gg = bb = 1 - v; else rr = gg = bb = v;
+      }
+      d[k] = rr * 255; d[k + 1] = gg * 255; d[k + 2] = bb * 255; d[k + 3] = 255;
+    }
+    og.putImageData(id, 0, 0);
+    const x0 = (W - img.w * scale) / 2;
+    g.imageSmoothingEnabled = false; g.drawImage(off, x0, 0, img.w * scale, H);
+    if (o.marks) { g.save(); g.translate(x0, 0); o.marks(g, scale); g.restore(); }
+  };
+
+  /* ---------- small linear algebra ---------- */
+  /** Full 1-D convolution c = a * b (length n + m - 1). */
+  M2.conv = function (a, b) { const c = new Array(a.length + b.length - 1).fill(0); for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) c[i + j] += a[i] * b[j]; return c; };
+  /** (n + m - 1) x n Toeplitz matrix T(b) with T(b) a = b * a. */
+  M2.toeplitz = function (b, n) { const T = N.zeros(n + b.length - 1, n); for (let j = 0; j < n; j++) b.forEach((v, i) => T[i + j][j] = v); return T; };
+  /** 2-D convolution of a flat h x w image with kernel K (2-D array); mode "full" or "same" (as scipy.signal.convolve2d). Returns {w, h, data}. */
+  M2.conv2 = function (X, w, h, K, mode = "same") {
+    const p = K.length, q = K[0].length, H = h + p - 1, W = w + q - 1, C = new Float64Array(H * W);
+    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) { const x = X[i * w + j]; if (!x) continue; for (let k = 0; k < p; k++) for (let l = 0; l < q; l++) C[(i + k) * W + j + l] += x * K[k][l]; }
+    if (mode === "full") return { w: W, h: H, data: C };
+    const oi = Math.floor((p - 1) / 2), oj = Math.floor((q - 1) / 2), S = new Float64Array(w * h);
+    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) S[i * w + j] = C[(i + oi) * W + j + oj];
+    return { w, h, data: S };
+  };
+  M2.nnz = M => M.flat().filter(v => v !== 0).length;
+  /** Gaussian random numbers from a seeded uniform generator. */
+  M2.randn = function (rng) { let u = 0; while (!u) u = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng()); };
+  /** Vector as a column matrix for UI.drawMats. */
+  M2.col = v => v.map(x => [x]);
+
+  /* ---------- plots ---------- */
+  /** Stem plot (vertical lines from 0 with dots). */
+  M2.stems = function (plot, xs, ys, o = {}) {
+    xs.forEach((x, i) => plot.seg(x, 0, x, ys[i], Object.assign({ width: 1.5 }, o)));
+    return plot.pts(xs, ys, Object.assign({ r: 3.5 }, o));
+  };
+  /** Sparsity / value pattern of a matrix of any size: one square per entry, tinted by |value| (blue +, orange -). */
+  M2.pattern = function (canvas, M, o = {}) {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, W = Math.max(10, r.width);
+    const m = M.length, n = M[0].length, cell = Math.max(1, Math.min(o.maxCell || 22, (W - 2) / n)), H = m * cell + 2;
+    canvas.style.aspectRatio = "auto"; canvas.style.height = H + "px"; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = UI.css("--surface"); g.fillRect(0, 0, W, H);
+    const mx = Math.max(1e-300, ...M.flat().map(Math.abs)), x0 = (W - n * cell) / 2;
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) {
+      const v = M[i][j]; if (!v) continue;
+      g.globalAlpha = 0.25 + 0.75 * Math.abs(v) / mx; g.fillStyle = UI.css(v < 0 ? "--c2" : "--c1");
+      g.fillRect(x0 + j * cell + (cell > 4 ? 0.5 : 0), 1 + i * cell + (cell > 4 ? 0.5 : 0), cell - (cell > 4 ? 1 : 0), cell - (cell > 4 ? 1 : 0));
+    }
+    g.globalAlpha = 1; g.strokeStyle = UI.css("--line"); g.strokeRect(x0 + 0.5, 1.5, n * cell - 1, m * cell - 1);
+  };
+
+  /** Directed graph on a Plot (after begin): nodes [{x, y, label, sub, fill}], edges [{from, to, label, width, color}] (0-based node indices). */
+  M2.graph = function (plot, nodes, edges, o = {}) {
+    const g = plot.g, R = o.r || 20;
+    for (const e of edges) {
+      const a = nodes[e.from], b = nodes[e.to], X1 = plot.X(a.x), Y1 = plot.Y(a.y), X2 = plot.X(b.x), Y2 = plot.Y(b.y);
+      const L = Math.hypot(X2 - X1, Y2 - Y1), ux = (X2 - X1) / L, uy = (Y2 - Y1) / L;
+      const sx = X1 + ux * R, sy = Y1 + uy * R, ex = X2 - ux * (R + 2), ey = Y2 - uy * (R + 2), w = e.width || 2, hd = 9 + w * 1.2;
+      g.strokeStyle = g.fillStyle = UI.css(e.color || "--muted"); g.lineWidth = w; g.globalAlpha = e.alpha ?? 1;
+      g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex - ux * hd * 0.7, ey - uy * hd * 0.7); g.stroke();
+      g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex - ux * hd - uy * hd * 0.5, ey - uy * hd + ux * hd * 0.5); g.lineTo(ex - ux * hd + uy * hd * 0.5, ey - uy * hd - ux * hd * 0.5); g.closePath(); g.fill();
+      g.globalAlpha = 1;
+      if (e.label != null) {
+        const off = e.labelOff ?? 16, mx = (sx + ex) / 2 - uy * off, my = (sy + ey) / 2 + ux * off;
+        g.font = `600 12px ${UI.css("--mono")}`; const tw = g.measureText(e.label).width;
+        g.fillStyle = UI.css("--surface"); g.globalAlpha = 0.9; g.fillRect(mx - tw / 2 - 4, my - 9, tw + 8, 18); g.globalAlpha = 1;
+        g.fillStyle = UI.css(e.labelColor || e.color || "--ink"); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(e.label, mx, my);
+      }
+    }
+    for (const nd of nodes) {
+      const X = plot.X(nd.x), Y = plot.Y(nd.y);
+      g.beginPath(); g.arc(X, Y, R, 0, 7); g.fillStyle = UI.css("--surface"); g.fill();
+      if (nd.fill) { g.globalAlpha = nd.alpha ?? 0.35; g.fillStyle = UI.css(nd.fill); g.fill(); g.globalAlpha = 1; }
+      g.lineWidth = 2; g.strokeStyle = UI.css(nd.stroke || "--ink"); g.stroke();
+      g.fillStyle = UI.css("--ink"); g.font = `700 14px ${UI.css("--body")}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(nd.label, X, Y);
+      if (nd.sub) { g.font = `600 12px ${UI.css("--mono")}`; g.fillStyle = UI.css(nd.subColor || "--ink"); g.textBaseline = nd.subBelow ? "top" : "bottom"; g.fillText(nd.sub, X + (nd.subDx || 0), Y + (nd.subBelow ? R + 4 : -R - 4)); }
+    }
+  };
+
+  /** Image canvas in the plot column (cap = caption, half = side by side). */
+  M2.imgBox = function (ctx, cap, half = false) {
+    const cv = el("canvas", { role: "img", "aria-label": cap }); const box = el("div", { class: "plotbox" + (half ? " half" : "") }, el("p", { class: "cap" }, cap), cv);
+    ctx.plots.append(box); cv.box = box; cv.capEl = box.firstChild; return cv;
+  };
+  /** Readout as plain text lines. */
+  M2.lines = (...a) => a.flat().join("\n");
+  /** Format a vector as (a, b, c). */
+  M2.vec = (v, d = 3) => "(" + v.map(x => N.fmt(Math.abs(x) < 1e-12 ? 0 : x, d)).join(", ") + ")";
+  /** "Notebook" box: the Python that matches what the module shows. */
+  M2.code = function (ctx, cap = "In Python") { const r = el("div", { class: "readout code" }); ctx.ctrls.append(el("div", { class: "ctrl" }, el("div", { class: "lab" }, cap), r)); return r; };
+  return M2;
+})();
+
+const PAGE = {"title": "Lab 7: Geometric transformations", "sub": "MATH 31246 Applied Linear Algebra \u00b7 interactive demos \u00b7 VMLS \u00a77.1", "footer": "MATH 31246 Applied Linear Algebra (CCNY) \u00b7 interactive demos for the lab notebooks, following Boyd &amp; Vandenberghe, <i>Introduction to Applied Linear Algebra</i> (VMLS). Built on the CSc 301 interactive-module code. <a href=\"index.html\">All labs</a>"};
+/* Lab 7 modules: the columns of A are the images of e1, e2; a gallery of 2-D transformations on a grid; transforming an image;
+   composition (order matters); shift, affine maps and homogeneous coordinates. VMLS §7.1 (with §6.4, §2.1). */
+(() => {
+  const fmt = N.fmt;
+  const nv = v => +v.toFixed(10);
+  const f3 = v => fmt(nv(v), 3);
+  const pym = M => `np.array([[${f3(M[0][0])}, ${f3(M[0][1])}], [${f3(M[1][0])}, ${f3(M[1][1])}]])`;
+  const det = A => A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  const ap = (A, p) => [A[0][0] * p[0] + A[0][1] * p[1], A[1][0] * p[0] + A[1][1] * p[1]];
+  const rad = d => d * Math.PI / 180;
+
+  /* the notebook's grid: 8 horizontal and 8 vertical segments in [0, 1] x [0, 0.6] */
+  const GRID = (() => { const L = []; for (let g = 0; g < 8; g++) { const gx = g / 7, gy = 0.6 * g / 7; L.push([[0, gy], [1, gy]], [[gx, 0], [gx, 0.6]]); } return L; })();
+  const ROSE = [...Array(401).keys()].map(i => { const t = 2 * Math.PI * i / 400, r = Math.sin(5 * t); return [r * Math.cos(t), r * Math.sin(t)]; });
+  function drawGrid(plot, A, o = {}) {
+    const b = o.shift || [0, 0], F = p => { const q = ap(A, p); return [q[0] + b[0], q[1] + b[1]]; };
+    if (o.shape === "rose") {
+      if (o.orig !== false) plot.line(ROSE.map(p => p[0]), ROSE.map(p => p[1]), { color: "--c3", width: 1.2, alpha: 0.45, dash: [4, 3] });
+      const R = ROSE.map(F); plot.line(R.map(p => p[0]), R.map(p => p[1]), { color: "--c1", width: 2 }); return;
+    }
+    if (o.orig !== false) for (const [p, q] of GRID) plot.seg(p[0], p[1], q[0], q[1], { color: "--c3", width: 1.2, alpha: 0.55 });
+    const sq = [[0, 0], [1, 0], [1, 0.6], [0, 0.6]].map(F);
+    plot.fill(sq.map(p => p[0]), sq.map(p => p[1]), { color: "--c1", alpha: 0.1 });
+    for (const [p, q] of GRID) { const P = F(p), Q = F(q); plot.seg(P[0], P[1], Q[0], Q[1], { color: "--c1", width: 1.6 }); }
+    const o0 = F([0, 0]), e1 = ap(A, [1, 0]), e2 = ap(A, [0, 1]);
+    plot.arrow(o0[0], o0[1], o0[0] + e1[0], o0[1] + e1[1], { color: "--err", width: 2.5 }).arrow(o0[0], o0[1], o0[0] + e2[0], o0[1] + e2[1], { color: "--c4", width: 2.5 });
+    plot.text(o0[0] + e1[0], o0[1] + e1[1], "Ae₁", { color: "--err", bold: true, dx: 6, dy: -8 }).text(o0[0] + e2[0], o0[1] + e2[1], "Ae₂", { color: "--c4", bold: true, dx: 6, dy: -8 });
+  }
+
+  /* the transformations of VMLS §7.1 */
+  const KINDS = [["scale", "scaling a I"], ["dilate", "dilation diag(d₁, d₂)"], ["hshear", "horizontal shear"], ["vshear", "vertical shear"], ["reflect", "reflection through a line"], ["rotate", "rotation"], ["project", "projection onto a line"]];
+  function makeT(kind, p) {
+    const c2 = Math.cos(2 * rad(p.th)), s2 = Math.sin(2 * rad(p.th)), c = Math.cos(rad(p.th)), s = Math.sin(rad(p.th)), th = `np.deg2rad(${p.th})`;
+    switch (kind) {
+      case "scale": return { A: [[p.a, 0], [0, p.a]], name: `${f3(p.a)} I`, py: `${f3(p.a)} * np.eye(2)` };
+      case "dilate": return { A: [[p.d1, 0], [0, p.d2]], name: `diag(${f3(p.d1)}, ${f3(p.d2)})`, py: `np.diag([${f3(p.d1)}, ${f3(p.d2)}])` };
+      case "hshear": return { A: [[1, p.k], [0, 1]], name: `shear k = ${f3(p.k)}`, py: `np.array([[1, ${f3(p.k)}], [0, 1]])` };
+      case "vshear": return { A: [[1, 0], [p.k, 1]], name: `shear k = ${f3(p.k)}`, py: `np.array([[1, 0], [${f3(p.k)}, 1]])` };
+      case "reflect": return { A: [[c2, s2], [s2, -c2]], name: `reflection ${p.th}°`, py: `reflection(${th})`, line: rad(p.th) };
+      case "rotate": return { A: [[c, -s], [s, c]], name: `rotation ${p.th}°`, py: `rotation(${th})` };
+      case "project": return { A: [[(1 + c2) / 2, s2 / 2], [s2 / 2, (1 - c2) / 2]], name: `projection ${p.th}°`, py: `projection(${th})`, line: rad(p.th) };
+    }
+  }
+  /* a select plus the parameter sliders it needs; returns {ctrls, get()} */
+  function chooser(label, def, cb) {
+    const k = UI.select({ label, value: def.kind, options: KINDS }, () => { show(); cb(); });
+    const S = {
+      a: UI.slider({ label: "a (scale factor)", min: -2, max: 2, step: 0.05, value: def.a ?? 1.5, fmt: f3 }, cb),
+      d1: UI.slider({ label: "d₁ (stretch along x₁)", min: -2, max: 2, step: 0.05, value: def.d1 ?? 0.5, fmt: f3 }, cb),
+      d2: UI.slider({ label: "d₂ (stretch along x₂)", min: -2, max: 2, step: 0.05, value: def.d2 ?? 1.5, fmt: f3 }, cb),
+      k: UI.slider({ label: "k (shear amount)", min: -2, max: 2, step: 0.05, value: def.k ?? 0.5, fmt: f3 }, cb),
+      th: UI.slider({ label: "θ (degrees)", min: -180, max: 180, step: 1, value: def.th ?? 30, fmt: v => v + "°" }, cb),
+    };
+    const need = { scale: ["a"], dilate: ["d1", "d2"], hshear: ["k"], vshear: ["k"], reflect: ["th"], rotate: ["th"], project: ["th"] };
+    function show() { for (const [n, s] of Object.entries(S)) s.el.hidden = !need[k.value].includes(n); }
+    show();
+    return { ctrls: [k, ...Object.values(S)], sel: k, S, get: () => makeT(k.value, { a: S.a.value, d1: S.d1.value, d2: S.d2.value, k: S.k.value, th: S.th.value }) };
+  }
+  const props = A => {
+    const d = det(A), AtA = N.mm(N.T(A), A), keeps = Math.abs(AtA[0][0] - 1) < 1e-9 && Math.abs(AtA[1][1] - 1) < 1e-9 && Math.abs(AtA[0][1]) < 1e-9;
+    return [`area factor |det A| = |ad − bc| = ${f3(Math.abs(d))}`, keeps ? "keeps lengths (columns orthonormal)" : "changes some lengths", Math.abs(d) < 1e-9 ? "NOT invertible: squashes the plane onto a line" : (d < 0 ? "flips orientation (mirror image)" : "keeps orientation"), Math.abs(d) < 1e-9 ? "" : "can be undone"].filter(Boolean);
+  };
+  const matCanvas = (cv, list) => UI.drawMats(cv, list.map(([M, t]) => ({ M: M.map(r => r.map(nv)), title: t, d: 3 })), { cell: 58 });
+
+  /* ---------- 1. columns are the images of e1, e2 ---------- */
+  const findA = {
+    id: "find-matrix", title: "Columns of A = images of e₁, e₂",
+    ref: "VMLS §7.1 · Lab 7, Recap and Part 1",
+    desc: `<p>For A = [a c; b d], Ae<sub>1</sub> = (a, b) and Ae<sub>2</sub> = (c, d): the <b>columns</b> of A are where A sends the unit vectors.
+      Every other point follows from them, because Ax = x<sub>1</sub>(Ae<sub>1</sub>) + x<sub>2</sub>(Ae<sub>2</sub>). So the unit square becomes the parallelogram spanned by the two columns,
+      and the whole square grid becomes a grid of parallelograms. <b>Drag the tips</b> of Ae<sub>1</sub> (red) and Ae<sub>2</sub> (pink).
+      The dashed path shows how the point x is built from the columns.</p>`,
+    tries: ["Warm-up: A = [2 1; 0 1]. Where do the corners (1, 0), (1, 1), (0, 1) go? Check in the plot.",
+      "Find the matrix of the clockwise rotation by 90°: drag Ae₁ to (0, −1) and Ae₂ to (1, 0).",
+      "Make the two columns parallel. What happens to the grid and to the area?",
+      "Swap the two columns. What changes about the parallelogram?"],
+    init(ctx) {
+      const plot = ctx.plot("The grid and its image (drag the arrow tips)", { aspect: "4 / 3", equal: true });
+      const E = [["a (Ae₁, first entry)", 2], ["b (Ae₁, second entry)", 0], ["c (Ae₂, first entry)", 1], ["d (Ae₂, second entry)", 1]].map(([l, v]) => UI.slider({ label: l, min: -2.5, max: 2.5, step: 0.1, value: v, fmt: f3 }, () => ctx.redraw()));
+      const X = [0.5, 1].map((v, i) => UI.slider({ label: `x${i + 1} (the point x)`, min: -2, max: 2, step: 0.1, value: v, fmt: f3 }, () => ctx.redraw()));
+      const set = v => { E.forEach((s, i) => s.value = v[i]); ctx.redraw(); };
+      ctx.add(UI.buttons([["warm-up [2 1; 0 1]", () => set([2, 0, 1, 1])], ["identity", () => set([1, 0, 0, 1])], ["clockwise 90° (book)", () => set([0, -1, 1, 0])]]), ...E, ...X);
+      const cvm = ctx.canvas("A and the images of the corners of the unit square");
+      const out = ctx.readout("What A does"), code = M2.code(ctx);
+      let drag = null;
+      plot.onPointer((t, x, y) => {
+        if (t === "down") { const a = [E[0].value, E[1].value], c = [E[2].value, E[3].value]; drag = Math.hypot(x - a[0], y - a[1]) < 0.35 ? 0 : Math.hypot(x - c[0], y - c[1]) < 0.35 ? 2 : null; }
+        if (drag !== null && (t === "down" || t === "drag")) { E[drag].value = Math.max(-2.5, Math.min(2.5, Math.round(x * 10) / 10)); E[drag + 1].value = Math.max(-2.5, Math.min(2.5, Math.round(y * 10) / 10)); ctx.redraw(); }
+        if (t === "up") drag = null;
+      });
+      return () => {
+        const [a, b, c, d] = E.map(s => s.value), A = [[a, c], [b, d]], x = X.map(s => s.value), y = ap(A, x);
+        plot.view(-3, 3, -3, 3).begin("", "");
+        for (let k = -6; k <= 6; k++) { const P = ap(A, [k, -6]), Q = ap(A, [k, 6]), R = ap(A, [-6, k]), S = ap(A, [6, k]); plot.seg(P[0], P[1], Q[0], Q[1], { color: "--c1", width: 1, alpha: 0.25 }).seg(R[0], R[1], S[0], S[1], { color: "--c1", width: 1, alpha: 0.25 }); }
+        plot.fill([0, 1, 1, 0], [0, 0, 1, 1], { color: "--c3", alpha: 0.12 });
+        const sq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(p => ap(A, p));
+        plot.fill(sq.map(p => p[0]), sq.map(p => p[1]), { color: "--c1", alpha: 0.2, stroke: true });
+        plot.arrow(0, 0, 1, 0, { color: "--muted", width: 1.5 }).arrow(0, 0, 0, 1, { color: "--muted", width: 1.5 }).text(1, 0, "e₁", { color: "--muted", dx: 4, dy: 10 }).text(0, 1, "e₂", { color: "--muted", dx: -16, dy: -2 });
+        const p1 = [x[0] * a, x[0] * b];
+        plot.seg(0, 0, p1[0], p1[1], { color: "--err", width: 1.5, dash: [5, 3] }).seg(p1[0], p1[1], y[0], y[1], { color: "--c4", width: 1.5, dash: [5, 3] });
+        plot.arrow(0, 0, a, b, { color: "--err", width: 3 }).arrow(0, 0, c, d, { color: "--c4", width: 3 }).pts([a, c], [b, d], { color: "--ink", r: 5, hollow: true });
+        plot.text(a, b, "Ae₁", { color: "--err", bold: true, dx: 8, dy: -10, size: 13 }).text(c, d, "Ae₂", { color: "--c4", bold: true, dx: 8, dy: -10, size: 13 });
+        plot.pts([x[0]], [x[1]], { color: "--c3", r: 5 }).text(x[0], x[1], "x", { color: "--c3", bold: true, dx: 7, dy: -8 }).pts([y[0]], [y[1]], { color: "--c1", r: 6 }).text(y[0], y[1], "Ax", { color: "--c1", bold: true, dx: 8, dy: 10, size: 13 });
+        plot.note("green: unit square   blue: its image", { bold: true }).end();
+        const corners = [[0, 0], [1, 0], [1, 1], [0, 1]], im = corners.map(p => ap(A, p));
+        matCanvas(cvm, [[A, "A"], [N.T(corners), "corners (columns)"], [N.T(im), "A @ corners"]]);
+        out.textContent = M2.lines(`Ax = ${f3(x[0])}·${M2.vec([a, b])} + ${f3(x[1])}·${M2.vec([c, d])}`, `   = ${M2.vec(y)}`, ...props(A));
+        code.textContent = M2.lines(`A = np.column_stack([[${f3(a)}, ${f3(b)}], [${f3(c)}, ${f3(d)}]])`, "square = np.array([[0, 1, 1, 0],", "                   [0, 0, 1, 1]])", "print(A @ square)      # images of the corners");
+      };
+    },
+  };
+
+  /* ---------- 2. gallery ---------- */
+  const gallery = {
+    id: "gallery", title: "Gallery of transformations",
+    ref: "VMLS §7.1 · Lab 7, Part 2",
+    desc: `<p>The transformations of VMLS §7.1 applied to the notebook's grid (green, a 1 × 0.6 rectangle so you can tell a mirror image from the original). Blue is A times every grid point.
+      <b>Scaling</b> aI stretches everything by |a| (and flips if a &lt; 0); a <b>dilation</b> diag(d<sub>1</sub>, d<sub>2</sub>) stretches the two axes differently; a <b>shear</b> slides points parallel to one axis;
+      <b>reflection</b> and <b>projection</b> use the line at angle θ (dashed); <b>rotation</b> turns by θ counterclockwise. Straight lines stay straight and the origin stays put: that is linearity.</p>`,
+    tries: ["Scaling with a = −0.8: what happens to the red arrow Ae₁?",
+      "Shear with k = 0.3 and k = 1. Does the area change? (See the readout.)",
+      "Reflection with θ = 45°: which coordinates get swapped?",
+      "Projection: why can this one not be undone? Where does the whole grid end up?"],
+    init(ctx) {
+      const plot = ctx.plot("Grid (green) and its image under A (blue)", { aspect: "4 / 3", equal: true });
+      const cvm = ctx.canvas("The matrix");
+      const ch = chooser("Transformation", { kind: "rotate", th: 30 }, () => ctx.redraw());
+      ctx.add(...ch.ctrls); const out = ctx.readout("Properties"), code = M2.code(ctx);
+      return () => {
+        const T = ch.get(), A = T.A;
+        plot.view(-1.6, 1.8, -1.6, 1.8).begin("", "");
+        if (T.line !== undefined) plot.seg(-3 * Math.cos(T.line), -3 * Math.sin(T.line), 3 * Math.cos(T.line), 3 * Math.sin(T.line), { color: "--ink", width: 1, dash: [6, 4] });
+        drawGrid(plot, A); plot.note(T.name, { bold: true, color: "--ink" }).end();
+        matCanvas(cvm, [[A, "A"]]);
+        out.textContent = M2.lines(...props(A));
+        const defs = { reflect: "def reflection(t):\n    c, s = np.cos(2*t), np.sin(2*t)\n    return np.array([[c, s], [s, -c]])", rotate: "def rotation(t):\n    c, s = np.cos(t), np.sin(t)\n    return np.array([[c, -s], [s, c]])",
+          project: "def projection(t):\n    c, s = np.cos(2*t), np.sin(2*t)\n    return 0.5 * np.array([[1 + c, s], [s, 1 - c]])" };
+        code.textContent = M2.lines(defs[ch.sel.value] || "", `A = ${T.py}`, "new = A @ grid     # all 640 points at once", "plt.plot(new[0], new[1], 'b.')").replace(/^\n/, "");
+      };
+    },
+  };
+
+  /* ---------- 3. transforming an image ---------- */
+  const imageT = {
+    id: "image", title: "Transforming an image",
+    ref: "VMLS §7.1 · Lab 7, Part 2",
+    desc: `<p>An image is just many points (pixels) with colors, so A transforms it the same way it transforms the grid. The picture fills the square from (−1, −1) to (1, 1), centered at the origin.
+      For every pixel y of the new picture we look up the color of the original pixel x = A<sup>−1</sup>y (the point that A sends to y); that leaves no gaps.
+      When A cannot be undone (a projection, or a scaling by 0), every pixel is squashed onto a line instead.</p>`,
+    tries: ["Rotate by 90°, then by −90°. Which way is positive?",
+      "Reflection with θ = 90°: the astronaut is mirrored. Which axis is the mirror?",
+      "Shear with k = 1. Are vertical lines in the picture still vertical?",
+      "Projection: what is left of the picture? Why can it not be undone?"],
+    init(ctx) {
+      const a = M2.imgBox(ctx, "Original (the square −1 ≤ x₁, x₂ ≤ 1)", true), b = M2.imgBox(ctx, "A applied to every pixel", true);
+      const ch = chooser("Transformation", { kind: "hshear", k: 0.5 }, () => ctx.redraw());
+      ctx.add(...ch.ctrls); const cvm = ctx.canvas("The matrix"), out = ctx.readout("Properties"), code = M2.code(ctx);
+      let im = null; M2.image().then(v => { im = v; ctx.redraw(); });
+      const W = 240, R = 2;   // output: 240 x 240 pixels showing [-2, 2]^2
+      const toPix = (x1, x2) => [(x1 + R) / (2 * R) * W, (R - x2) / (2 * R) * W];
+      function render(A) {
+        const n = W * W, out = { w: W, h: W, R: new Float64Array(n).fill(0.93), G: new Float64Array(n).fill(0.93), B: new Float64Array(n).fill(0.93) }, d = det(A);
+        if (Math.abs(d) > 1e-6) {
+          const Ai = [[A[1][1] / d, -A[0][1] / d], [-A[1][0] / d, A[0][0] / d]];
+          for (let i = 0; i < W; i++) for (let j = 0; j < W; j++) {
+            const y = [-R + (j + 0.5) * 2 * R / W, R - (i + 0.5) * 2 * R / W], x = ap(Ai, y), c = Math.floor((x[0] + 1) / 2 * im.w), r = Math.floor((1 - x[1]) / 2 * im.h);
+            if (c >= 0 && c < im.w && r >= 0 && r < im.h) { const s = r * im.w + c, t = i * W + j; out.R[t] = im.R[s]; out.G[t] = im.G[s]; out.B[t] = im.B[s]; }
+          }
+        } else {
+          for (let r = 0; r < im.h; r++) for (let c = 0; c < im.w; c++) {
+            const y = ap(A, [-1 + (c + 0.5) * 2 / im.w, 1 - (r + 0.5) * 2 / im.h]), [pj, pi] = toPix(y[0], y[1]), i = Math.floor(pi), j = Math.floor(pj);
+            if (i >= 0 && i < W && j >= 0 && j < W) { const s = r * im.w + c, t = i * W + j; out.R[t] = im.R[s]; out.G[t] = im.G[s]; out.B[t] = im.B[s]; }
+          }
+        }
+        return out;
+      }
+      const axes = (g, sc) => { g.strokeStyle = "rgba(0,0,0,0.35)"; g.lineWidth = 1; g.beginPath(); g.moveTo(W / 2 * sc, 0); g.lineTo(W / 2 * sc, W * sc); g.moveTo(0, W / 2 * sc); g.lineTo(W * sc, W / 2 * sc); g.stroke(); };
+      return () => {
+        if (!im) return; const T = ch.get(), A = T.A;
+        M2.showImage(a, render([[1, 0], [0, 1]]), { marks: axes }); M2.showImage(b, render(A), { marks: axes });
+        matCanvas(cvm, [[A, "A"]]);
+        out.textContent = M2.lines(T.name, ...props(A));
+        code.textContent = M2.lines(`A = ${T.py}`, "# corners of the picture as columns", "corners = np.array([[-1, 1, 1, -1],", "                    [-1, -1, 1, 1]])", "print(A @ corners)   # where the corners go");
+      };
+    },
+  };
+
+  /* ---------- 4. composition ---------- */
+  const compose = {
+    id: "composition", title: "Composition: order matters",
+    ref: "VMLS §7.1 · Lab 7, Part 3",
+    desc: `<p>Doing B first and then A sends x to A(Bx). That is again a linear map, and its matrix is the product AB (matrix–matrix multiplication, coming in lecture): A(Bx) = (AB)x.
+      <b>Read products from right to left</b>: in AB, B acts first. In general AB ≠ BA: "scale, then rotate" is not "rotate, then scale". Some pairs do commute, such as two rotations (the angles add).</p>`,
+    tries: ["Default: B = dilation diag(0.5, 1.5), A = rotation 30° (the notebook's example). Compare AB and BA.",
+      "Make both rotations. Is AB = BA? What single rotation is it?",
+      "Make both reflections, with θ = 0° and θ = 60°. What kind of map is AB?",
+      "Find a pair other than two rotations for which AB = BA."],
+    init(ctx) {
+      const p1 = ctx.plot("A B: first B, then A", { aspect: "1 / 1", equal: true, half: true }), p2 = ctx.plot("B A: first A, then B", { aspect: "1 / 1", equal: true, half: true });
+      const cvm = ctx.canvas("The matrices");
+      const shape = UI.select({ label: "Shape", value: "grid", options: [["grid", "the grid"], ["rose", "rose curve r = sin 5θ"]] }, () => ctx.redraw());
+      const B = chooser("B (first)", { kind: "dilate", d1: 0.5, d2: 1.5 }, () => ctx.redraw()), A = chooser("A (second)", { kind: "rotate", th: 30 }, () => ctx.redraw());
+      ctx.add(shape, ...B.ctrls, ...A.ctrls); const out = ctx.readout("Compare"), code = M2.code(ctx);
+      return () => {
+        const TA = A.get(), TB = B.get(), AB = N.mm(TA.A, TB.A), BA = N.mm(TB.A, TA.A), same = AB.flat().every((v, i) => Math.abs(v - BA.flat()[i]) < 1e-9);
+        for (const [pl, M, t] of [[p1, AB, "A B"], [p2, BA, "B A"]]) { pl.view(-1.8, 1.8, -1.8, 1.8).begin("", ""); drawGrid(pl, M, { shape: shape.value }); pl.note(t, { bold: true, color: "--ink" }).end(); }
+        matCanvas(cvm, [[TA.A, "A"], [TB.A, "B"], [AB, "A B"], [BA, "B A"]]);
+        out.textContent = M2.lines(`B = ${TB.name}`, `A = ${TA.name}`, same ? "AB = BA: these two commute" : "AB ≠ BA: the order matters", `det(AB) = ${f3(det(AB))} = det A · det B`);
+        code.textContent = M2.lines(`A = ${TA.py}`, `B = ${TB.py}`, "print(np.allclose(A @ (B @ grid), (A @ B) @ grid))", "print(A @ B)", "print(B @ A)");
+      };
+    },
+  };
+
+  /* ---------- 5. shift ---------- */
+  const shift = {
+    id: "shift", title: "Shift and homogeneous coordinates",
+    ref: "VMLS §7.1, §2.1 · Lab 7, Part 4",
+    desc: `<p>A <b>shift</b> y = x + b moves every point by the same vector b. It is not of the form Ax: it moves the origin (0 ↦ b), while every Ax sends 0 to 0.
+      Maps y = Ax + b are called <b>affine</b> (Lab 9). Graphics software still writes them as one matrix by adding a third coordinate equal to 1 (<b>homogeneous coordinates</b>):
+      [A b; 0 1] (x, 1) = (Ax + b, 1). Rotating about a point p other than the origin is "shift by −p, rotate, shift back by +p".</p>`,
+    tries: ["Set θ = 0 and move b. Check f(0) = b and f(e₁ + e₂) ≠ f(e₁) + f(e₂) in the readout.",
+      "Turn on 'rotate about the center p'. Which point stays fixed?",
+      "With the center option on, what are A and b in y = Ax + b? Compare with H.",
+      "Rotate by 90° about p. Then press the button for the notebook's Your turn: is A still the rotation matrix?"],
+    init(ctx) {
+      const plot = ctx.plot("Grid (green) and its image after rotating and shifting (blue)", { aspect: "4 / 3", equal: true });
+      const cvm = ctx.canvas("The 3 × 3 matrix H in homogeneous coordinates");
+      const th = UI.slider({ label: "θ (rotation, degrees)", min: -180, max: 180, step: 1, value: 30, fmt: v => v + "°" }, () => ctx.redraw());
+      const bs = [0.6, 0.3].map((v, i) => UI.slider({ label: `b${i + 1} (shift)`, min: -1.5, max: 1.5, step: 0.05, value: v, fmt: f3 }, () => ctx.redraw()));
+      const cen = UI.check({ label: "rotate about the center p = (0.5, 0.3) instead (b is not used)", value: false }, () => ctx.redraw());
+      ctx.add(th, ...bs, cen, UI.buttons([["Your turn: 90° about p", () => { th.value = 90; cen.value = true; ctx.redraw(); }]]));
+      const out = ctx.readout("Is it linear?"), code = M2.code(ctx);
+      return () => {
+        const t = rad(th.value), R = [[Math.cos(t), -Math.sin(t)], [Math.sin(t), Math.cos(t)]], p = [0.5, 0.3];
+        const b = cen.value ? N.add(p, ap(R, p), -1) : bs.map(s => s.value);
+        bs.forEach(s => s.el.hidden = cen.value);
+        const f = x => N.add(ap(R, x), b);
+        plot.view(-1.6, 2, -1.4, 1.8).begin("", "");
+        drawGrid(plot, R, { shift: b });
+        plot.arrow(0, 0, b[0], b[1], { color: "--ink", width: 1.5, dash: [5, 3] }).pts([0], [0], { color: "--ink", r: 4 }).text(b[0], b[1], "f(0) = b", { color: "--ink", bold: true, dx: -8, dy: 12, align: "right" });
+        if (cen.value) plot.pts([p[0]], [p[1]], { color: "--c6", r: 6 }).text(p[0], p[1], "p (fixed)", { color: "--c6", bold: true, dx: 8, dy: -10 });
+        plot.note(cen.value ? "rotation about p: shift by −p, rotate, shift by +p" : "rotate, then shift by b", { bold: true, color: "--ink" }).end();
+        const H = [[R[0][0], R[0][1], b[0]], [R[1][0], R[1][1], b[1]], [0, 0, 1]];
+        UI.drawMats(cvm, [{ M: H.map(r => r.map(nv)), title: "H = [A b; 0 1]", d: 3, sep: 2 }], { cell: 64 });
+        const e1 = [1, 0], e2 = [0, 1];
+        out.textContent = M2.lines(`f(x) = A x + b, A = rotation ${th.value}°`, `b = ${M2.vec(b)}`, `f(0)            = ${M2.vec(f([0, 0]))}`, `f(e₁ + e₂)      = ${M2.vec(f([1, 1]))}`, `f(e₁) + f(e₂)   = ${M2.vec(N.add(f(e1), f(e2)))}`, Math.hypot(...b) < 1e-9 ? "b = 0: linear" : "superposition fails: not linear (affine)");
+        code.textContent = cen.value ? M2.lines(`R = rotation(np.deg2rad(${th.value}))`, "p = np.array([0.5, 0.3])", "b = p - R @ p          # A = R", "new = R @ grid + b[:, None]")
+          : M2.lines(`R = rotation(np.deg2rad(${th.value}))`, `b = np.array([${f3(b[0])}, ${f3(b[1])}])`, "# b[:, None] is b as a column: added to every column", "new = R @ grid + b[:, None]", "H = np.block([[R, b[:, None]], [np.zeros((1, 2)), 1]])");
+      };
+    },
+  };
+
+  UI.page(Object.assign({}, PAGE, { modules: [findA, gallery, imageT, compose, shift] }));
+})();
+
+</script>
+</body>
+</html>

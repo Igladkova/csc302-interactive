@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit Summaries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a header, a wrapping row of module tabs, then the active module: plot column (left, wide) and
+   control column (right); the description sits under the plot. One column on phones.
+   Same visual language as the Ch 6-8 course tools (Okabe-Ito palette, Spline Sans + JetBrains Mono). */
+:root {
+  --bg: #F6F8FB; --surface: #FFFFFF; --ink: #1F2433; --muted: #5B6478; --line: #D9DEE7; --grid: #E8ECF2; --focus: #0072B2;
+  --exact: #1F2433; --err: #D55E00; --hl: #FFF3D6;
+  --c1: #0072B2; --c2: #E69F00; --c3: #009E73; --c4: #CC79A7; --c5: #56B4E9; --c6: #D55E00; --c7: #7A5195;
+  --display: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --body: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --err: #FF8A4C; --hl: #3A3220;
+  --c1: #56B4E9; --c2: #F5B935; --c3: #2DC79A; --c4: #E39BC4; --c5: #9ED8F6; --c6: #FF8A4C; --c7: #B79AE0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --err: #FF8A4C; --hl: #3A3220;
+  --c1: #56B4E9; --c2: #F5B935; --c3: #2DC79A; --c4: #E39BC4; --c5: #9ED8F6; --c6: #FF8A4C; --c7: #B79AE0; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body) }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 40px; display: grid; gap: 16px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px }
+h1 { font: 700 1.5rem/1.15 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+h2 { font: 700 1.15rem/1.2 var(--display); margin: 0; text-wrap: balance }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem }
+a { color: var(--focus) }
+.nav { font-size: 1.08rem; font-weight: 500 }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px }
+nav.tabs button { font: 500 0.88rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer }
+nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.module { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0 }
+.plots { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-width: 0 }
+.plotbox { min-width: 0; grid-column: 1 / -1 }
+.plotbox.half { grid-column: auto }
+.ctrl > .matrix, .btns > .ctrl { justify-self: start }
+.plotbox .cap { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+canvas { display: block; width: 100%; max-width: 100%; border-radius: 6px; touch-action: none }
+.ctrls { display: grid; gap: 12px; align-content: start }
+.ctrl { display: grid; gap: 4px }
+.ctrl > label, .ctrl .lab { font-size: 0.88rem; display: flex; justify-content: space-between; gap: 10px }
+.ctrl .val { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.ctrl input[type=range] { width: 100%; accent-color: var(--focus) }
+select, input[type=number], input[type=text] { font: inherit; color: inherit; width: 100%; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg) }
+.btns { display: flex; flex-wrap: wrap; gap: 8px }
+button.b { font: 600 0.9rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 13px; cursor: pointer }
+button.b.primary { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem }
+.check input { accent-color: var(--focus); margin: 0 }
+.matrix { display: inline-grid; gap: 4px; font-family: var(--mono) }
+.matrix input { width: 5.4em; padding: 4px 5px; text-align: right; font-family: var(--mono); font-size: 0.85rem }
+.readout { font-family: var(--mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; overflow-x: auto; white-space: pre; line-height: 1.45; max-height: 360px; overflow-y: auto }
+.readout .hl { background: var(--hl) }
+.readout table { border-collapse: collapse }
+.readout td, .readout th { padding: 1px 8px; text-align: right; white-space: nowrap }
+.readout th { color: var(--muted); font-weight: 600 }
+.desc { font-size: 0.92rem; max-width: 75ch }
+.desc p { margin: 0 0 8px }
+.desc .ref { color: var(--muted); font-size: 0.85rem }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted) }
+.legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; background: var(--c) }
+footer { font-size: 0.8rem; color: var(--muted) }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+@media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
+@media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px }
+.card h2 a { color: var(--ink); text-decoration: none }
+.card h2 a:hover { text-decoration: underline }
+.card .num { font: 600 0.78rem var(--mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase }
+.card p { margin: 6px 0 0; font-size: 0.9rem; color: var(--muted) }
+.card.new { border-color: var(--focus) }
+.intro { font-size: 0.95rem }
+.intro p { margin: 0 0 8px }
+h2.sec { margin-top: 6px }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px }
+.box ul { margin: 0; padding-left: 20px }
+.box li { margin: 4px 0; font-size: 0.95rem }
+.box li span { color: var(--muted) }
+header.infohead { display: grid; grid-template-columns: minmax(0, 3.3fr) minmax(0, 1fr); gap: 16px; align-items: end }
+header.infohead .nav { margin: 0 }
+@media (max-width: 760px) { header.infohead { grid-template-columns: minmax(0, 1fr) } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="infohead"><div><h1>Unit Summaries</h1><p class="sub">CSc 302 · one page per meeting · CCNY</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a></p></header>
+<div class="intro"><p>One page per CSc 302 meeting, in the style of the calculus review pages: learning objectives, the key results with Heath (and Stewart) section numbers, a figure, worked examples with hidden answers, a table of the mathematics the meeting needs (linked to the Calc pages, or for linear algebra to MATH 246), and review questions.</p></div>
+<div class="cards">
+<section class="panel card"><div class="num">Heath §1.1–1.2 · Stewart §11.10–11.11 · meeting 1</div><h2><a href="unit01_approximations.html">Approximations; Taylor series with remainder</a></h2><p>The strategy of scientific computing, sources of approximation, Taylor&#x27;s theorem with remainder, choosing the degree, order of the error; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §1.2 · meeting 2</div><h2><a href="unit02_errors-conditioning.html">Errors: absolute and relative, forward and backward; conditioning; stability</a></h2><p>Significant digits, data vs computational error, truncation vs rounding, forward and backward error, condition numbers, an unstable recurrence; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §1.3–1.4 · meeting 3</div><h2><a href="unit03_floating-point.html">Floating-point systems, rounding, machine epsilon, cancellation</a></h2><p>β, p, L, U; UFL, OFL and ε_mach; IEEE double; subnormals, Inf and NaN; non-associativity; cancellation and overflow and how to rewrite formulas; what math it needs.</p></section>
+<section class="panel card"><div class="num">Stewart §14.1–14.2 · meeting 4</div><h2><a href="unit04_several-variables.html">Functions of several variables: graphs, level curves, limits</a></h2><p>Surfaces, level curves and contour plots in Python, path tests and squeeze proofs for limits, continuity, a removable singularity in floating point; what math it needs.</p></section>
+<section class="panel card"><div class="num">Stewart §14.3 · Heath §8.6.1 · meeting 5</div><h2><a href="unit05_partial-derivatives.html">Partial derivatives; Clairaut; finite-difference partials</a></h2><p>Partials as slopes of traces, higher derivatives and Clairaut, forward, centered and mixed differences, their errors and cost; what math it needs.</p></section>
+<section class="panel card"><div class="num">Stewart §14.4 · Heath §5.6.2 · meeting 6</div><h2><a href="unit06_linearization.html">Tangent planes, differentials, the Jacobian, multivariable Taylor</a></h2><p>Linearization, error propagation by differentials, the Jacobian and F(x + s) ≈ F + Js, the quadratic model with gradient and Hessian; what math it needs.</p></section>
+<section class="panel card"><div class="num">Stewart §14.5–14.6 · meeting 7</div><h2><a href="unit07_chain-rule-gradient.html">The chain rule; directional derivatives and the gradient</a></h2><p>Chain rule as a product of Jacobians, directional derivatives, the gradient as steepest ascent and normal to level sets, gradient checks; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §2.1–2.3 · meeting 8</div><h2><a href="unit08_conditioning.html">Linear systems: norms, condition number, error bounds</a></h2><p>Existence and uniqueness, vector and matrix norms, cond(A), error bounds and digits lost, residual vs error, Hilbert matrices; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §2.4 · meeting 9</div><h2><a href="unit09_lu.html">Gaussian elimination, LU factorization, pivoting, operation counts</a></h2><p>Triangular solves, elimination matrices and A = LU, why and how to pivot (PA = LU), n³/3 work, factor once and solve many; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §2.5, 2.7 · meeting 10</div><h2><a href="unit10_cholesky-banded.html">Special systems: SPD and Cholesky, banded; software</a></h2><p>Positive definiteness, Cholesky by hand and as a test, tridiagonal and banded solves in O(n), LAPACK/SciPy routines; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §3.1–3.3 · meeting 11</div><h2><a href="unit11_least-squares.html">Linear least squares: existence, normal equations, conditioning</a></h2><p>Data fitting, normal equations, orthogonal projection and the pseudo-inverse, cond(A) and the angle θ, why AᵀA squares the condition number; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §3.4–3.5, 3.8 · meeting 12</div><h2><a href="unit12_qr.html">QR factorization: Householder, Givens, Gram–Schmidt; software</a></h2><p>Least squares by QR, Householder reflections and Givens rotations by hand, classical vs modified Gram–Schmidt, rank deficiency, cost and accuracy; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §4.3, 4.5.1–4.5.3 · meeting 13</div><h2><a href="unit13_eigenvalues.html">Eigenvalues: conditioning; power, inverse and Rayleigh quotient iteration</a></h2><p>Eigenvalue background, Bauer–Fike and sensitive nonsymmetric eigenvalues, power iteration, shifted inverse iteration, Rayleigh quotient iteration; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §4.5.6, 4.7–4.8 · meeting 14</div><h2><a href="unit14_qr-iteration-svd.html">QR iteration; computing the SVD; software</a></h2><p>QR iteration with shifts and deflation, Hessenberg reduction, the SVD and its uses, why not eig(AᵀA), NumPy/SciPy routines; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §5.1–5.5.2 · meeting 17</div><h2><a href="unit17_nonlinear-equations.html">Nonlinear equations: conditioning, convergence rates, bisection, fixed-point iteration</a></h2><p>Existence and multiplicity, the condition number of a root, rates r and C, bisection step counts, fixed-point convergence; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §5.5.3–5.5.7 · meeting 18</div><h2><a href="unit18_newton-secant.html">Newton&#x27;s method, secant method, safeguarded methods</a></h2><p>Newton&#x27;s quadratic convergence and its failures, multiple roots, the secant rate 1.618, interpolation methods, Brent&#x27;s hybrid; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §5.6 · Stewart §14.4 · meeting 19</div><h2><a href="unit19_nonlinear-systems.html">Systems of nonlinear equations: Newton and Broyden</a></h2><p>Intersecting curves, conditioning via the Jacobian, fixed-point iteration, Newton as tangent planes, Broyden updates, damping; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §6.1–6.3 · Stewart §14.7 · meeting 20</div><h2><a href="unit20_optimality.html">Extrema, the Hessian, convexity and optimality conditions</a></h2><p>Local vs global minima, coercivity, convexity, first- and second-order conditions, Cholesky test, the √ε limit; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §6.4 · meeting 21</div><h2><a href="unit21_optimization-1d.html">One-dimensional optimization: golden section, parabolic interpolation, Newton</a></h2><p>Unimodality, golden section and its step count, parabolic interpolation (r ≈ 1.324), Newton for minimization, Brent&#x27;s safeguarded method; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §6.5 · meeting 22</div><h2><a href="unit22_unconstrained.html">Unconstrained optimization: steepest descent, Newton, BFGS, conjugate gradients</a></h2><p>Descent directions and line searches, zigzagging and the condition number, Newton steps, the BFGS update, conjugate directions; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §6.2.3, 6.7 · Stewart §14.8 · meeting 23</div><h2><a href="unit23_constrained.html">Lagrange multipliers; constrained optimality; penalty methods and SQP</a></h2><p>Lagrange conditions and their geometry, the multiplier as a sensitivity, the KKT matrix and inequality constraints, SQP as Newton&#x27;s method, penalty methods; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §7.1–7.3 · meeting 24</div><h2><a href="unit24_interpolation.html">Polynomial interpolation: bases, Lagrange and Newton forms, Runge, Chebyshev</a></h2><p>Existence and uniqueness, monomial vs Lagrange vs Newton, divided differences, Vandermonde conditioning, the error formula, Runge&#x27;s phenomenon, Chebyshev points; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §7.4 · Stewart §10.1, 13.1–13.2 · meeting 25</div><h2><a href="unit25_splines-curves.html">Piecewise and spline interpolation; parametric curves</a></h2><p>Piecewise linear error, Hermite cubics and PCHIP, cubic splines and end conditions, overshoot, spline curves through points and their length; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §8.1–8.3 · meeting 26</div><h2><a href="unit26_quadrature.html">Numerical integration: Newton–Cotes, Gaussian, composite and adaptive quadrature</a></h2><p>Conditioning of integration, midpoint/trapezoid/Simpson and their errors, degree, Gaussian rules, composite convergence rates, adaptive quadrature; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §8.4.3–8.4.4 · Stewart §15.1, 15.3, 15.4, 15.9 · meeting 27</div><h2><a href="unit27_double-integrals.html">Double integrals, change of variables, product rules and Monte Carlo</a></h2><p>Fubini, mass, center of mass and probability, polar coordinates and the Jacobian, tensor-product rules, the curse of dimensionality, Monte Carlo and σ/√N; what math it needs.</p></section>
+<section class="panel card"><div class="num">Heath §8.6–8.7 · meeting 28</div><h2><a href="unit28_differentiation.html">Numerical differentiation, Richardson extrapolation, automatic differentiation; course review</a></h2><p>Ill conditioning of differentiation, finite differences and the optimal h, Richardson and Romberg, forward-mode AD, and the course&#x27;s error themes; what math it needs.</p></section>
+</div>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+</div>
+</body>
+</html>

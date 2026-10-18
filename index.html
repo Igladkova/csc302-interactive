@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Numerical Analysis and Multivariable Calculus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a header, a wrapping row of module tabs, then the active module: plot column (left, wide) and
+   control column (right); the description sits under the plot. One column on phones.
+   Same visual language as the Ch 6-8 course tools (Okabe-Ito palette, Spline Sans + JetBrains Mono). */
+:root {
+  --bg: #F6F8FB; --surface: #FFFFFF; --ink: #1F2433; --muted: #5B6478; --line: #D9DEE7; --grid: #E8ECF2; --focus: #0072B2;
+  --exact: #1F2433; --err: #D55E00; --hl: #FFF3D6;
+  --c1: #0072B2; --c2: #E69F00; --c3: #009E73; --c4: #CC79A7; --c5: #56B4E9; --c6: #D55E00; --c7: #7A5195;
+  --display: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --body: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --err: #FF8A4C; --hl: #3A3220;
+  --c1: #56B4E9; --c2: #F5B935; --c3: #2DC79A; --c4: #E39BC4; --c5: #9ED8F6; --c6: #FF8A4C; --c7: #B79AE0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --err: #FF8A4C; --hl: #3A3220;
+  --c1: #56B4E9; --c2: #F5B935; --c3: #2DC79A; --c4: #E39BC4; --c5: #9ED8F6; --c6: #FF8A4C; --c7: #B79AE0; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body) }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 40px; display: grid; gap: 16px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px }
+h1 { font: 700 1.5rem/1.15 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+h2 { font: 700 1.15rem/1.2 var(--display); margin: 0; text-wrap: balance }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem }
+a { color: var(--focus) }
+.nav { font-size: 1.08rem; font-weight: 500 }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px }
+nav.tabs button { font: 500 0.88rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer }
+nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.module { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0 }
+.plots { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-width: 0 }
+.plotbox { min-width: 0; grid-column: 1 / -1 }
+.plotbox.half { grid-column: auto }
+.ctrl > .matrix, .btns > .ctrl { justify-self: start }
+.plotbox .cap { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+canvas { display: block; width: 100%; max-width: 100%; border-radius: 6px; touch-action: none }
+.ctrls { display: grid; gap: 12px; align-content: start }
+.ctrl { display: grid; gap: 4px }
+.ctrl > label, .ctrl .lab { font-size: 0.88rem; display: flex; justify-content: space-between; gap: 10px }
+.ctrl .val { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.ctrl input[type=range] { width: 100%; accent-color: var(--focus) }
+select, input[type=number], input[type=text] { font: inherit; color: inherit; width: 100%; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg) }
+.btns { display: flex; flex-wrap: wrap; gap: 8px }
+button.b { font: 600 0.9rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 13px; cursor: pointer }
+button.b.primary { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem }
+.check input { accent-color: var(--focus); margin: 0 }
+.matrix { display: inline-grid; gap: 4px; font-family: var(--mono) }
+.matrix input { width: 5.4em; padding: 4px 5px; text-align: right; font-family: var(--mono); font-size: 0.85rem }
+.readout { font-family: var(--mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; overflow-x: auto; white-space: pre; line-height: 1.45; max-height: 360px; overflow-y: auto }
+.readout .hl { background: var(--hl) }
+.readout table { border-collapse: collapse }
+.readout td, .readout th { padding: 1px 8px; text-align: right; white-space: nowrap }
+.readout th { color: var(--muted); font-weight: 600 }
+.desc { font-size: 0.92rem; max-width: 75ch }
+.desc p { margin: 0 0 8px }
+.desc .ref { color: var(--muted); font-size: 0.85rem }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted) }
+.legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; background: var(--c) }
+footer { font-size: 0.8rem; color: var(--muted) }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+@media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
+@media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px }
+.card h2 a { color: var(--ink); text-decoration: none }
+.card h2 a:hover { text-decoration: underline }
+.card ul { margin: 8px 0 0; padding-left: 18px; font-size: 0.9rem }
+.card li { margin: 2px 0 }
+.card .num { font: 600 0.78rem var(--mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase }
+.card.new { border-color: var(--focus) }
+.card p { margin: 6px 0 0; font-size: 0.9rem; color: var(--muted) }
+.intro { font-size: 0.95rem }
+.intro p { margin: 0 0 8px }
+h2.sec { margin-top: 6px }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div><h1>Numerical Analysis and Multivariable Calculus</h1><p class="sub">CSc 302 and CSc 303 (lab) · CCNY · interactive modules</p></div><div><p class="sub"><span class="nav"><a href="csc302_info.html">CSc 302 Info</a> · <a href="csc303_info.html">CSc 303 Info</a></span>: catalog descriptions and meeting plans</p><p class="sub"><span class="nav"><a href="multivariable_calculus.html">Calc pages</a></span>: Multivariable Calculus review pages and online resources</p><p class="sub"><span class="nav"><a href="unit_summaries.html">Unit summaries</a></span>: one page per meeting, with what math it needs</p></div></header>
+<div class="intro">
+<p>Pick a page, then a tab. Every tab has controls on the right, plots on the left, a short explanation, "try this" prompts and the textbook sections it belongs to.
+Links of the form <code>page.html#tab</code> open a tab directly. The pages follow the order of the CSc 302 meetings.</p>
+<p>Tabs marked → open one of the course's other interactive tools. Tabs marked * go beyond the CSc 302 syllabus (Heath §6.6) and are offered for projects and curiosity.</p>
+</div>
+<div class="cards">
+<section class="panel card"><div class="num">Heath Ch 1 · meetings 1–3</div><h2><a href="ch01_floating-point.html">Floating-Point Arithmetic</a></h2><ul><li><a href="ch01_floating-point.html#fp-system">Floating-point systems</a></li><li><a href="ch01_floating-point.html#rounding">Rounding rules</a></li><li><a href="ch01_floating-point.html#calculator">Selectable-precision calculator</a></li><li><a href="ch01_floating-point.html#base-conversion">Base conversion</a></li><li><a href="ch01_floating-point.html#quadratic">Quadratic formula</a></li><li><a href="ch01_floating-point.html#series">Infinite series</a></li><li><a href="ch01_floating-point.html#rounding-truncation">Rounding vs truncation error</a></li></ul></section>
+<section class="panel card new"><div class="num">Stewart Ch 14–15 · meetings 4–7, 20, 23, 27</div><h2><a href="mv_several-variables.html">Functions of Several Variables</a></h2><ul><li><a href="mv_several-variables.html#surfaces">Surfaces and level curves</a></li><li><a href="mv_several-variables.html#partials">Partial derivatives and finite differences</a></li><li><a href="mv_several-variables.html#tangent-plane">Tangent plane and linear approximation</a></li><li><a href="mv_several-variables.html#gradient">Gradient and directional derivatives</a></li><li><a href="mv_several-variables.html#critical-points">Critical points and the Hessian</a></li><li><a href="mv_several-variables.html#lagrange">Lagrange multipliers</a></li><li><a href="mv_several-variables.html#double-integrals">Double integrals: Riemann sums and tensor rules</a></li><li><a href="mv_several-variables.html#polar">Polar coordinates and the Jacobian</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 2 · meetings 8–10</div><h2><a href="ch02_linear-systems.html">Linear Systems</a></h2><ul><li><a href="ch02_linear-systems.html#conditioning">Conditioning (2 × 2)</a></li><li><a href="ch02_linear-systems.html#pnorms">Vector p-norms</a></li><li><a href="ch02_linear-systems.html#condition-number">Matrix condition number</a></li><li><a href="ch02_linear-systems.html#error-bound">Error bound</a></li><li><a href="ch02_linear-systems.html#gaussian-elimination">Gaussian elimination (LU)</a></li><li><a href="ch02_linear-systems.html#gauss-jordan">Gauss–Jordan elimination</a></li><li><a href="ch02_linear-systems.html#cholesky">Cholesky factorization</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 3 · meetings 11–12</div><h2><a href="ch03_least-squares.html">Linear Least Squares</a></h2><ul><li><a href="ch03_least-squares.html#data-fitting">Data fitting</a></li><li><a href="ch03_least-squares.html#gram-schmidt">Gram–Schmidt orthogonalization</a></li><li><a href="ch03_least-squares.html#householder">Householder transformations</a></li><li><a href="ch03_least-squares.html#householder-qr">Householder QR</a></li><li><a href="ch03_least-squares.html#givens-qr">Givens QR</a></li><li><a href="ch03_least-squares.html#gram-schmidt-qr">Gram–Schmidt QR (classical vs modified)</a></li><li><a href="ch03_least-squares.html#pivoting-qr">QR with column pivoting</a></li><li><a href="ch03_least-squares.html#svd">Singular value decomposition</a></li><li><a href="ch03_least-squares.html#low-rank">Lower-rank approximation (images)</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 4 · meetings 13–14</div><h2><a href="ch04_eigenvalues.html">Eigenvalue Problems</a></h2><ul><li><a href="ch04_eigenvalues.html#power-inverse">Power and inverse iteration (+ Rayleigh quotient)</a></li><li><a href="ch04_eigenvalues.html#qr-iteration">QR iteration with shifts</a></li><li><a href="ch04_eigenvalues.html#hessenberg">Hessenberg reduction</a></li><li><a href="ch04_eigenvalues.html#jacobi">Jacobi&#x27;s method</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 5 · meetings 17–19</div><h2><a href="ch05_nonlinear-equations.html">Nonlinear Equations</a></h2><ul><li><a href="ch05_nonlinear-equations.html#bisection">Interval bisection</a></li><li><a href="ch05_nonlinear-equations.html#fixed-point">Fixed-point iteration</a></li><li><a href="ch05_nonlinear-equations.html#newton">Newton&#x27;s method</a></li><li><a href="ch05_nonlinear-equations.html#secant">Secant method</a></li><li><a href="ch05_nonlinear-equations.html#inverse-interpolation">Inverse quadratic interpolation</a></li><li><a href="ch05_nonlinear-equations.html#linear-fractional">Linear fractional interpolation</a></li><li><a href="ch05_nonlinear-equations.html#newton-2d">Newton&#x27;s method (2-D)</a></li><li><a href="ch05_nonlinear-equations.html#broyden">Broyden&#x27;s method (2-D)</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 6 · meetings 20–23</div><h2><a href="ch06_optimization.html">Optimization</a></h2><ul><li><a href="ch06_optimization.html#golden-section">Golden section search</a></li><li><a href="ch06_optimization.html#parabolic-interpolation">Successive parabolic interpolation</a></li><li><a href="ch06_optimization.html#newton-1d">Newton&#x27;s method (1-D optimization)</a></li><li><a href="ch06_optimization.html#energy">Energy minimization (spring–mass)</a></li><li><a href="ch06_optimization.html#unconstrained">Steepest descent, Newton, CG, BFGS, Nelder–Mead → Optimizer Explorer</a></li><li><a href="ch06_optimization.html#gauss-newton">Gauss–Newton *</a></li><li><a href="ch06_optimization.html#levenberg-marquardt">Levenberg–Marquardt *</a></li><li><a href="ch06_optimization.html#penalty">Penalty method</a></li><li><a href="ch06_optimization.html#sqp">Sequential quadratic programming</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 7 · meetings 24–25</div><h2><a href="ch07_interpolation.html">Interpolation</a></h2><ul><li><a href="ch07_interpolation.html#basis-functions">Basis functions</a></li><li><a href="ch07_interpolation.html#newton-interpolation">Newton interpolation</a></li><li><a href="ch07_interpolation.html#chebyshev">Chebyshev polynomials</a></li><li><a href="ch07_interpolation.html#taylor">Taylor interpolation</a></li><li><a href="ch07_interpolation.html#error-bounds">Error bounds</a></li><li><a href="ch07_interpolation.html#bernstein">Bernstein polynomials</a></li><li><a href="ch07_interpolation.html#b-splines">B-splines</a></li><li><a href="ch07_interpolation.html#playground">Polynomial bases, convergence, piecewise cubic, polynomial vs spline → Interpolation Playground</a></li></ul></section>
+<section class="panel card"><div class="num">Heath Ch 8 · meetings 26–28</div><h2><a href="ch08_integration-differentiation.html">Integration and Differentiation</a></h2><ul><li><a href="ch08_integration-differentiation.html#finite-differences">Finite difference approximations</a></li><li><a href="ch08_integration-differentiation.html#numerical-differentiation">Numerical differentiation of data</a></li><li><a href="ch08_integration-differentiation.html#cancellation-of-errors">Cancellation of errors</a></li><li><a href="ch08_integration-differentiation.html#newton-cotes">Newton–Cotes and adaptive quadrature → Integration Explorer</a></li><li><a href="ch08_integration-differentiation.html#richardson">Richardson extrapolation</a></li><li><a href="ch08_integration-differentiation.html#romberg">Romberg integration</a></li><li><a href="ch08_integration-differentiation.html#monte-carlo-1d">Monte Carlo integration in 1-D</a></li><li><a href="ch08_integration-differentiation.html#monte-carlo-2d">Monte Carlo integration in 2-D</a></li></ul></section>
+</div>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+</div>
+</body>
+</html>
