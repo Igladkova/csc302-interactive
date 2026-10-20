@@ -1,0 +1,279 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Integration Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: shaded plot is the hero (left); controls right; comparison table and convergence chart below.
+   Same visual language as the Chapter 6 and 7 tools. Stacks to one column on phones. */
+:root {
+  --bg: #F6F8FB; --surface: #FFFFFF; --ink: #1F2433; --muted: #5B6478; --line: #D9DEE7; --grid: #E8ECF2; --focus: #0072B2;
+  --exact: #1F2433; --node: #D55E00; --pos: #0072B2; --neg: #D55E00;
+  --m-left: #E69F00; --m-right: #CC79A7; --m-mid: #D55E00; --m-trap: #0072B2; --m-simp: #009E73; --m-gauss: #56B4E9; --m-adapt: #7A5195;
+  --display: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --body: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --node: #FF8A4C; --pos: #56B4E9; --neg: #FF8A4C;
+  --m-left: #F5B935; --m-right: #E39BC4; --m-mid: #FF8A4C; --m-trap: #56B4E9; --m-simp: #2DC79A; --m-gauss: #9ED8F6; --m-adapt: #B79AE0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --node: #FF8A4C; --pos: #56B4E9; --neg: #FF8A4C;
+  --m-left: #F5B935; --m-right: #E39BC4; --m-mid: #FF8A4C; --m-trap: #56B4E9; --m-simp: #2DC79A; --m-gauss: #9ED8F6; --m-adapt: #B79AE0; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 40px; display: grid; gap: 18px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px }
+h1 { font: 700 1.55rem/1.15 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem }
+.grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start }
+.grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0 }
+canvas { display: block; width: 100%; max-width: 100% }
+#plot { aspect-ratio: 16 / 10; border-radius: 6px }
+#conv { aspect-ratio: 16 / 9 }
+.mono, .val, td.num { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.controls { display: grid; gap: 14px }
+.section-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+select, button, input { font: inherit; color: inherit }
+select { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg) }
+.tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px }
+.tab { display: flex; align-items: center; gap: 8px; padding: 6px 10px; white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-size: 0.9rem; background: var(--bg) }
+.tab .sw { width: 14px; height: 4px; border-radius: 2px; background: var(--c); flex: none }
+.tab[aria-pressed="true"] { border-color: var(--c); background: var(--surface); font-weight: 600; box-shadow: inset 0 0 0 1px var(--c) }
+.row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px }
+.row label { font-size: 0.9rem }
+.row input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--focus) }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem }
+.check input { accent-color: var(--focus); margin: 0 }
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 10px; margin: 0; display: grid; gap: 8px; min-width: 0 }
+legend { font-size: 0.8rem; font-weight: 600; padding: 0 4px; color: var(--muted) }
+.big { font: 600 1.05rem var(--mono); }
+.eq { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere }
+button:focus-visible, select:focus-visible, input:focus-visible, .tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+.tablewrap { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+th { font-weight: 600; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase }
+td.num { text-align: right }
+tr.sel td { background: var(--bg); font-weight: 600 }
+.name { display: flex; align-items: center; gap: 8px }
+.name .sw { width: 14px; height: 4px; border-radius: 2px; background: var(--c) }
+.try { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.9rem }
+.try b { font-weight: 600 }
+footer { font-size: 0.8rem; color: var(--muted) }
+@media (max-width: 860px) { .grid, .grid.two { grid-template-columns: minmax(0, 1fr) } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Integration Explorer</h1>
+      <p class="sub">CSc 302 · Chapter 8 · Heath §8.3 · compare quadrature rules on the same integral</p>
+    </div>
+    <p class="sub mono" id="status"></p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <canvas id="plot" aria-label="The integrand with the selected rule's shaded approximation"></canvas>
+      <p class="eq" id="caption" style="margin:8px 0 0"></p>
+    </div>
+    <div class="panel controls">
+      <div>
+        <p class="section-label">Integral</p>
+        <select id="fn" aria-label="Integrand and interval"></select>
+        <p class="eq" id="exact" style="margin:6px 0 0"></p>
+      </div>
+      <div>
+        <p class="section-label">Rule to draw</p>
+        <div class="tabs" id="tabs" role="group" aria-label="Rule to draw"></div>
+      </div>
+      <div class="row">
+        <label for="n">number of subintervals k</label><span class="val" id="nval"></span>
+        <input type="range" id="n" min="1" max="64" step="1" value="4">
+      </div>
+      <div>
+        <p class="section-label">Selected rule</p>
+        <div class="big" id="value"></div>
+        <div class="eq" id="formula"></div>
+      </div>
+      <fieldset>
+        <legend>Adaptive Simpson</legend>
+        <label class="check"><input type="checkbox" id="adapt"> show the intervals adaptive Simpson chooses</label>
+        <div class="row"><label for="tol">tolerance</label><span class="val" id="tolval"></span><input type="range" id="tol" min="-10" max="-1" step="1" value="-4"></div>
+      </fieldset>
+    </div>
+  </div>
+
+  <div class="grid two">
+    <div class="panel">
+      <p class="section-label">All rules with k subintervals</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>rule</th><th class="num">value</th><th class="num">error</th><th class="num">f evals</th><th>order</th></tr></thead>
+        <tbody id="tbl"></tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <p class="section-label">|error| vs k (log–log); the dashed line marks the current k</p>
+      <canvas id="conv" aria-label="Convergence chart"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="section-label">Try this</p>
+    <ol class="try">
+      <li><b>Midpoint vs trapezoid.</b> For e^(−x²), compare the two errors at any k: midpoint's is about half of trapezoid's, with the opposite sign (so Simpson = (2M + T)/3 cancels them).</li>
+      <li><b>Order.</b> Double k from 8 to 16. By what factor does each error shrink? Read off the order from the slopes in the chart.</li>
+      <li><b>Exactness.</b> Pick x³: Simpson and 2-point Gauss are exact already at k = 1. Why?</li>
+      <li><b>Rough integrands.</b> Pick √x or the step. Which rules lose their order? Where does adaptive Simpson put its intervals?</li>
+      <li><b>Runge again.</b> 1/(1 + 25x²) is easy to integrate piecewise, even though interpolating it by one polynomial failed in Chapter 7.</li>
+    </ol>
+  </div>
+
+  <footer>Inspired by the Wolfram Demonstration "Comparing Basic Numerical Integration Methods". Composite rules on k equal subintervals of width h; Simpson uses each subinterval's midpoint (2k + 1 points); Gauss uses 2 Gauss–Legendre points per subinterval (Heath §8.3.3, §8.3.5). Adaptive Simpson follows Heath Algorithm 8.1.</footer>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const FUNCS = [
+  { id: "gauss", label: "e^(−x²) on [0, 1] (Heath Example 8.2)", f: x => Math.exp(-x * x), a: 0, b: 1, I: 0.7468241328124270 },
+  { id: "sq", label: "x² on [0, 1] (Example 8.3)", f: x => x * x, a: 0, b: 1, I: 1 / 3 },
+  { id: "cube", label: "x³ on [0, 2]", f: x => x * x * x, a: 0, b: 2, I: 4 },
+  { id: "sin", label: "sin x on [0, π] (Berkeley PNM 21.3)", f: Math.sin, a: 0, b: Math.PI, I: 2 },
+  { id: "wavy", label: "x + sin(10x) on [0, 3]", f: x => x + Math.sin(10 * x), a: 0, b: 3, I: 4.5 + (1 - Math.cos(30)) / 10 },
+  { id: "runge", label: "1/(1 + 25x²) on [−1, 1]", f: x => 1 / (1 + 25 * x * x), a: -1, b: 1, I: 0.4 * Math.atan(5) },
+  { id: "sqrt", label: "√x on [0, 1] (infinite slope at 0)", f: x => Math.sqrt(Math.max(0, x)), a: 0, b: 1, I: 2 / 3 },
+  { id: "kink", label: "|x − 0.3| on [0, 1] (a kink)", f: x => Math.abs(x - 0.3), a: 0, b: 1, I: 0.29 },
+  { id: "step", label: "step at x = 0.55 on [0, 1]", f: x => (x < 0.55 ? 0.2 : 1), a: 0, b: 1, I: 0.55 * 0.2 + 0.45 },
+];
+const G = 1 / Math.sqrt(3);
+const RULES = [
+  { id: "left", name: "Left sum", color: "--m-left", order: "h", evals: k => k,
+    q: (f, a, h, k) => { let s = 0; for (let j = 0; j < k; j++) s += f(a + j * h); return h * s; } },
+  { id: "right", name: "Right sum", color: "--m-right", order: "h", evals: k => k,
+    q: (f, a, h, k) => { let s = 0; for (let j = 1; j <= k; j++) s += f(a + j * h); return h * s; } },
+  { id: "mid", name: "Midpoint", color: "--m-mid", order: "h²", evals: k => k,
+    q: (f, a, h, k) => { let s = 0; for (let j = 0; j < k; j++) s += f(a + (j + 0.5) * h); return h * s; } },
+  { id: "trap", name: "Trapezoid", color: "--m-trap", order: "h²", evals: k => k + 1,
+    q: (f, a, h, k) => { let s = 0.5 * (f(a) + f(a + k * h)); for (let j = 1; j < k; j++) s += f(a + j * h); return h * s; } },
+  { id: "simp", name: "Simpson", color: "--m-simp", order: "h⁴", evals: k => 2 * k + 1,
+    q: (f, a, h, k) => { let s = 0; for (let j = 0; j < k; j++) { const x = a + j * h; s += f(x) + 4 * f(x + h / 2) + f(x + h); } return h * s / 6; } },
+  { id: "gauss", name: "Gauss 2-pt", color: "--m-gauss", order: "h⁴", evals: k => 2 * k,
+    q: (f, a, h, k) => { let s = 0; for (let j = 0; j < k; j++) { const m = a + (j + 0.5) * h; s += f(m - G * h / 2) + f(m + G * h / 2); } return h * s / 2; } },
+];
+const FORMULAS = {
+  left: "h Σ f(x_{j−1})", right: "h Σ f(x_j)", mid: "h Σ f((x_{j−1}+x_j)/2)",
+  trap: "h (½f(a) + f(x₁) + … + f(x_{k−1}) + ½f(b))", simp: "(h/6) Σ [f(x_{j−1}) + 4f(m_j) + f(x_j)]", gauss: "(h/2) Σ [f(m_j − h/(2√3)) + f(m_j + h/(2√3))]",
+};
+const S = { fn: FUNCS[0], rule: "trap", k: 4 };
+
+function adaptiveSimpson(f, a, b, tol) {
+  const simp = (lo, hi) => (hi - lo) / 6 * (f(lo) + 4 * f((lo + hi) / 2) + f(hi));
+  const stack = [[a, b, tol]], acc = []; let total = 0, evals = 0;
+  while (stack.length && acc.length < 4000) {
+    const [lo, hi, t] = stack.pop(), m = (lo + hi) / 2, s1 = simp(lo, hi), s2 = simp(lo, m) + simp(m, hi); evals += 5;
+    if (Math.abs(s2 - s1) < 15 * t || hi - lo < 1e-9) { total += s2 + (s2 - s1) / 15; acc.push([lo, hi]); }
+    else stack.push([m, hi, t / 2], [lo, m, t / 2]);
+  }
+  return { total, acc, evals };
+}
+
+// ---------------------------------------------------------------- drawing helpers
+function fit(c) { const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } return dpr; }
+function niceStep(range) { const r = range / 6, p = 10 ** Math.floor(Math.log10(r)); return [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= r); }
+function axes(c, V, dpr, logx = false, logy = false) {
+  const ctx = c.getContext("2d"), W = c.width, H = c.height, pl = 46 * dpr, pb = 24 * dpr, pt = 10 * dpr, pr = 12 * dpr;
+  const tx = x => logx ? Math.log10(x) : x, ty = y => logy ? Math.log10(y) : y;
+  const X = x => pl + (tx(x) - V[0]) / (V[1] - V[0]) * (W - pl - pr), Y = y => pt + (V[3] - ty(y)) / (V[3] - V[2]) * (H - pt - pb);
+  ctx.clearRect(0, 0, W, H); ctx.font = `${11 * dpr}px ${css("--mono")}`; ctx.lineWidth = 1 * dpr;
+  const sx = logx ? 1 : niceStep(V[1] - V[0]), sy = logy ? 2 : niceStep(V[3] - V[2]);
+  for (let u = Math.ceil(V[0] / sx) * sx; u <= V[1] + 1e-9; u += sx) { const x = logx ? 10 ** u : u; ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(X(x), pt); ctx.lineTo(X(x), H - pb); ctx.stroke(); ctx.fillStyle = css("--muted"); ctx.fillText(logx ? String(Math.round(x)) : +u.toFixed(2), X(x) - 6 * dpr, H - 6 * dpr); }
+  for (let u = Math.ceil(V[2] / sy) * sy; u <= V[3] + 1e-9; u += sy) { const y = logy ? 10 ** u : u; ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(pl, Y(y)); ctx.lineTo(W - pr, Y(y)); ctx.stroke(); ctx.fillStyle = css("--muted"); ctx.fillText(logy ? `1e${u}` : +u.toFixed(2), 2 * dpr, Y(y) + 4 * dpr); }
+  return { ctx, X, Y, W, H, pl, pr, pt, pb };
+}
+function alpha(hex, a) { const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? [...h].map(c => c + c).join("") : h, 16); return `rgba(${n >> 16 & 255}, ${n >> 8 & 255}, ${n & 255}, ${a})`; }
+
+function drawPlot() {
+  const c = $("plot"), dpr = fit(c), F = S.fn, f = F.f, a = F.a, b = F.b, k = S.k, h = (b - a) / k;
+  let lo = 0, hi = 0; for (let i = 0; i <= 400; i++) { const y = f(a + (b - a) * i / 400); lo = Math.min(lo, y); hi = Math.max(hi, y); }
+  const pad = 0.08 * (hi - lo || 1), V = [a - 0.02 * (b - a), b + 0.02 * (b - a), lo - pad, hi + pad];
+  const g = axes(c, V, dpr), { ctx, X, Y } = g, col = css(RULES.find(r => r.id === S.rule).color);
+  ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1.2 * dpr; ctx.beginPath(); ctx.moveTo(X(V[0]), Y(0)); ctx.lineTo(X(V[1]), Y(0)); ctx.stroke();
+  const shape = pts => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))); ctx.closePath(); ctx.fillStyle = alpha(col, 0.32); ctx.fill(); ctx.strokeStyle = alpha(col, 0.95); ctx.lineWidth = 1.2 * dpr; ctx.stroke(); };
+  const nodes = [];
+  if (!$("adapt").checked) for (let j = 0; j < k; j++) {
+    const x0 = a + j * h, x1 = x0 + h, m = x0 + h / 2;
+    if (S.rule === "left") { shape([[x0, 0], [x0, f(x0)], [x1, f(x0)], [x1, 0]]); nodes.push(x0); }
+    else if (S.rule === "right") { shape([[x0, 0], [x0, f(x1)], [x1, f(x1)], [x1, 0]]); nodes.push(x1); }
+    else if (S.rule === "mid") { shape([[x0, 0], [x0, f(m)], [x1, f(m)], [x1, 0]]); nodes.push(m); }
+    else if (S.rule === "trap") { shape([[x0, 0], [x0, f(x0)], [x1, f(x1)], [x1, 0]]); nodes.push(x0, x1); }
+    else if (S.rule === "simp") {   // parabola through x0, m, x1
+      const y0 = f(x0), ym = f(m), y1 = f(x1), P = t => { const s = (t - x0) / h; return y0 * 2 * (s - 0.5) * (s - 1) - ym * 4 * s * (s - 1) + y1 * 2 * s * (s - 0.5); };
+      const pts = [[x0, 0]]; for (let i = 0; i <= 24; i++) { const t = x0 + h * i / 24; pts.push([t, P(t)]); } pts.push([x1, 0]); shape(pts); nodes.push(x0, m, x1);
+    } else {   // Gauss: the linear interpolant through the 2 Gauss points has the same integral
+      const g1 = m - G * h / 2, g2 = m + G * h / 2, s = (f(g2) - f(g1)) / (g2 - g1), L = t => f(g1) + s * (t - g1);
+      shape([[x0, 0], [x0, L(x0)], [x1, L(x1)], [x1, 0]]); nodes.push(g1, g2);
+    }
+  }
+  let ad = null;
+  if ($("adapt").checked) {
+    ad = adaptiveSimpson(f, a, b, 10 ** +$("tol").value); const ac = css("--m-adapt");
+    for (const [l, r] of ad.acc) { ctx.fillStyle = alpha(ac, 0.25); ctx.fillRect(X(l), Y(V[3]), X(r) - X(l), Y(V[2]) - Y(V[3])); ctx.strokeStyle = alpha(ac, 0.8); ctx.lineWidth = 1 * dpr; ctx.beginPath(); ctx.moveTo(X(l), Y(V[2])); ctx.lineTo(X(l), Y(V[3])); ctx.stroke(); }
+  }
+  ctx.strokeStyle = css("--exact"); ctx.lineWidth = 2.6 * dpr; ctx.beginPath();
+  for (let i = 0; i <= 800; i++) { const x = a + (b - a) * i / 800; i ? ctx.lineTo(X(x), Y(f(x))) : ctx.moveTo(X(x), Y(f(x))); } ctx.stroke();
+  ctx.fillStyle = css("--node"); for (const x of nodes) { ctx.beginPath(); ctx.arc(X(x), Y(f(x)), 4 * dpr, 0, 7); ctx.fill(); }
+  return ad;
+}
+
+function drawConv() {
+  const c = $("conv"), dpr = fit(c), F = S.fn, V = [0, Math.log10(1024), -16, 1], g = axes(c, V, dpr, true, true), { ctx, X, Y } = g;
+  for (const r of RULES) {
+    ctx.strokeStyle = css(r.color); ctx.lineWidth = (r.id === S.rule ? 3 : 1.6) * dpr; ctx.beginPath(); let on = false;
+    for (let k = 1; k <= 1024; k *= 2) { const e = Math.max(1e-16, Math.abs(r.q(F.f, F.a, (F.b - F.a) / k, k) - F.I)); on ? ctx.lineTo(X(k), Y(e)) : ctx.moveTo(X(k), Y(e)); on = true; }
+    ctx.stroke();
+  }
+  ctx.setLineDash([5 * dpr, 4 * dpr]); ctx.strokeStyle = css("--muted"); ctx.lineWidth = 1.2 * dpr; ctx.beginPath(); ctx.moveTo(X(S.k), g.pt); ctx.lineTo(X(S.k), g.H - g.pb); ctx.stroke(); ctx.setLineDash([]);
+}
+
+function update() {
+  const F = S.fn, k = S.k, h = (F.b - F.a) / k;
+  $("nval").textContent = k; $("tolval").textContent = `1e${$("tol").value}`;
+  $("exact").textContent = `exact value I = ${F.I.toPrecision(12)}`;
+  const ad = drawPlot(); drawConv();
+  const rows = RULES.map(r => { const v = r.q(F.f, F.a, h, k); return { r, v, e: v - F.I }; });
+  const sel = rows.find(x => x.r.id === S.rule);
+  $("value").textContent = `${sel.r.name}: ${sel.v.toPrecision(10)}   error ${sel.e.toExponential(2)}`;
+  $("formula").textContent = `${FORMULAS[S.rule]},  h = (b − a)/k = ${h.toPrecision(4)}`;
+  $("tbl").innerHTML = rows.map(({ r, v, e }) => `<tr class="${r.id === S.rule ? "sel" : ""}"><td><span class="name" style="--c: var(${r.color})"><span class="sw"></span>${r.name}</span></td>
+    <td class="num">${v.toPrecision(10)}</td><td class="num">${e.toExponential(2)}</td><td class="num">${r.evals(k)}</td><td>O(${r.order})</td></tr>`).join("")
+    + (ad ? `<tr><td><span class="name" style="--c: var(--m-adapt)"><span class="sw"></span>Adaptive Simpson</span></td><td class="num">${ad.total.toPrecision(10)}</td>
+    <td class="num">${(ad.total - F.I).toExponential(2)}</td><td class="num">${ad.evals}</td><td>${ad.acc.length} intervals</td></tr>` : "");
+  $("caption").textContent = ad ? `Adaptive Simpson (tolerance 1e${$("tol").value}) used ${ad.acc.length} intervals: narrow where f changes fast, wide where it is smooth.`
+    : `${sel.r.name} with k = ${k}: shaded area = ${sel.v.toPrecision(8)}. Red dots: where f is evaluated.`;
+  $("status").textContent = `${F.label.split(" (")[0]} · k = ${k}`;
+}
+
+for (const F of FUNCS) { const o = document.createElement("option"); o.value = F.id; o.textContent = F.label; $("fn").append(o); }
+for (const r of RULES) {
+  const b = document.createElement("button"); b.className = "tab"; b.style.setProperty("--c", `var(${r.color})`); b.innerHTML = `<span class="sw"></span>${r.name}`;
+  b.setAttribute("aria-pressed", r.id === S.rule); b.addEventListener("click", () => { S.rule = r.id; [...$("tabs").children].forEach((t, i) => t.setAttribute("aria-pressed", RULES[i].id === r.id)); update(); });
+  $("tabs").append(b);
+}
+$("fn").addEventListener("change", () => { S.fn = FUNCS.find(F => F.id === $("fn").value); update(); });
+$("n").addEventListener("input", () => { S.k = +$("n").value; update(); });
+$("adapt").addEventListener("change", update); $("tol").addEventListener("input", update);
+const hsh = location.hash.replace("#", ""); const pre = FUNCS.find(F => F.id === hsh); if (pre) { S.fn = pre; $("fn").value = pre.id; }
+window.addEventListener("resize", update);
+try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", update); } catch (e) {}
+new MutationObserver(update).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+update();
+</script>

@@ -1,0 +1,515 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Optimizer Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: contour map is the hero (left); a control column (right) with method chips, settings and playback;
+   convergence chart + readout table below the map. Stacks to one column on phones. */
+:root {
+  --bg: #F6F8FB; --surface: #FFFFFF; --ink: #1F2433; --muted: #5B6478; --line: #D9DEE7; --focus: #0072B2;
+  --map-lo: #0B3D6B; --map-hi: #F3F7FC; --contour: #2C6FA8; --minimum: #000000; --start: #1F2433;
+  --m-nm: #CC79A7; --m-gd: #D55E00; --m-newton: #E69F00; --m-bfgs: #009E73; --m-cg: #0072B2;
+  --grad: #E69F00; --dir: #D55E00;
+  --ok: #1E7F4F; --warn: #A35A00; --bad: #B3261E;
+  --display: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --body: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --focus: #56B4E9;
+  --map-lo: #071A2E; --map-hi: #3D5B80; --contour: #9CC8EE; --minimum: #FFFFFF; --start: #E6EAF2;
+  --m-nm: #E39BC4; --m-gd: #FF8A4C; --m-newton: #F5B935; --m-bfgs: #2DC79A; --m-cg: #56B4E9;
+  --grad: #F5B935; --dir: #FF8A4C; --ok: #5BD69A; --warn: #F5B935; --bad: #FF7A70; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --focus: #56B4E9;
+  --map-lo: #071A2E; --map-hi: #3D5B80; --contour: #9CC8EE; --minimum: #FFFFFF; --start: #E6EAF2;
+  --m-nm: #E39BC4; --m-gd: #FF8A4C; --m-newton: #F5B935; --m-bfgs: #2DC79A; --m-cg: #56B4E9;
+  --grad: #F5B935; --dir: #FF8A4C; --ok: #5BD69A; --warn: #F5B935; --bad: #FF7A70; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 40px; display: grid; gap: 18px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px }
+h1 { font: 700 1.55rem/1.15 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem }
+.grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0 }
+.mapbox { position: relative }
+canvas { display: block; width: 100%; touch-action: none }
+#map { aspect-ratio: 1 / 1; border-radius: 6px; cursor: crosshair; max-width: 100% }
+#chart { aspect-ratio: 16 / 7; max-width: 100% }
+.hint { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin-top: 8px }
+.mono, td.num, .val { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.eq { font-family: var(--mono); font-size: 0.84rem; color: var(--muted); margin-top: 6px; overflow-wrap: anywhere }
+.controls { display: grid; gap: 14px }
+.section-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+select, button, input[type=range] { font: inherit; color: inherit }
+select { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg) }
+.methods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px }
+.chip { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; user-select: none; font-size: 0.9rem }
+.chip input { accent-color: var(--chip); margin: 0 }
+.chip .sw { width: 14px; height: 4px; border-radius: 2px; background: var(--chip); flex: none }
+.chip:has(input:checked) { border-color: var(--chip) }
+.row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px }
+.row label { font-size: 0.9rem }
+.row input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--focus) }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem }
+.check input { accent-color: var(--focus); margin: 0 }
+.settings { display: grid; gap: 10px }
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 10px; margin: 0; display: grid; gap: 8px; min-width: 0 }
+legend { font-size: 0.8rem; font-weight: 600; padding: 0 4px; color: var(--muted) }
+.play { display: flex; flex-wrap: wrap; gap: 8px }
+button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-weight: 600 }
+button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+button:focus-visible, select:focus-visible, input:focus-visible, .chip:focus-within { outline: 2px solid var(--focus); outline-offset: 2px }
+.tablewrap { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+th { font-weight: 600; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase }
+td.num { text-align: right }
+.name { display: flex; align-items: center; gap: 8px }
+.name .sw { width: 14px; height: 4px; border-radius: 2px; background: var(--chip) }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; border: 1px solid currentColor }
+.pill.run { color: var(--muted) } .pill.ok { color: var(--ok) } .pill.bad { color: var(--bad) } .pill.max { color: var(--warn) }
+.try { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.9rem }
+.try b { font-weight: 600 }
+.legendline { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted) }
+.legendline span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; background: var(--c) }
+footer { font-size: 0.8rem; color: var(--muted) }
+.grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) }
+@media (max-width: 860px) { .grid, .grid.two { grid-template-columns: minmax(0, 1fr) } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Optimizer Explorer</h1>
+      <p class="sub">CSc 302 · Optimization · Heath §6.4–6.5 · click the map to choose a starting point</p>
+    </div>
+    <p class="sub mono" id="status">ready</p>
+  </header>
+
+  <div class="grid">
+    <div class="panel mapbox">
+      <canvas id="map" aria-label="Contour map of the objective function. Click to set the starting point."></canvas>
+      <div class="hint"><span id="cursor" class="mono">x = –, y = –</span><span>★ minimum · ■ start · keys: space = play/pause, → = one step</span></div>
+      <div class="eq" id="formula"></div>
+    </div>
+
+    <div class="panel controls">
+      <div>
+        <p class="section-label">Function</p>
+        <select id="fn" aria-label="Objective function"></select>
+        <div class="row" id="kapparow" style="margin-top:8px">
+          <label for="kappa">condition number κ of H<sub>f</sub></label><span class="val" id="kappaval"></span>
+          <input type="range" id="kappa" min="0" max="2" step="0.001" value="0.699">
+        </div>
+      </div>
+
+      <div>
+        <p class="section-label">Methods</p>
+        <div class="methods" id="methods"></div>
+      </div>
+
+      <div class="settings">
+        <fieldset id="gdset">
+          <legend>Gradient descent</legend>
+          <label class="check"><input type="checkbox" id="gdls"> exact line search (steepest descent)</label>
+          <div class="row" id="alpharow">
+            <label for="alpha">learning rate α</label><span class="val" id="alphaval"></span>
+            <input type="range" id="alpha" min="-4" max="0" step="0.01">
+          </div>
+          <div class="eq" id="alphanote"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Newton</legend>
+          <label class="check"><input type="checkbox" id="damped" checked> damped (backtracking line search, fall back to −∇f if not a descent direction)</label>
+        </fieldset>
+        <fieldset>
+          <legend>Nelder–Mead</legend>
+          <div class="row"><label for="expand">expansion γ</label><span class="val" id="expandval"></span><input type="range" id="expand" min="1.2" max="4" step="0.1" value="2"></div>
+          <div class="row"><label for="contract">contraction ρ</label><span class="val" id="contractval"></span><input type="range" id="contract" min="0.1" max="0.9" step="0.05" value="0.5"></div>
+        </fieldset>
+        <label class="check"><input type="checkbox" id="arrows" checked> show −∇f (amber) and the search direction (red) for the first selected method</label>
+      </div>
+
+      <div>
+        <p class="section-label">Playback</p>
+        <div class="play">
+          <button class="primary" id="playbtn">Play</button>
+          <button id="stepbtn">Step</button>
+          <button id="resetbtn">Reset</button>
+        </div>
+        <div class="row" style="margin-top:8px"><label for="speed">speed</label><span class="val" id="speedval"></span><input type="range" id="speed" min="1" max="60" step="1" value="8"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid two">
+    <div class="panel">
+      <p class="section-label">Convergence: log<sub>10</sub>(f(x<sub>k</sub>) − f*) vs iteration k</p>
+      <canvas id="chart" aria-label="Convergence chart"></canvas>
+      <div class="legendline" id="chartlegend"></div>
+    </div>
+    <div class="panel">
+      <p class="section-label">Readout</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>method</th><th>status</th><th>k</th><th>f − f*</th><th>‖∇f‖</th><th title="function evaluations">#f</th><th title="gradient evaluations">#∇f</th></tr></thead>
+        <tbody id="readout"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="section-label">Try this</p>
+    <ol class="try">
+      <li><b>Quadratic, κ = 5 (Heath 6.11–6.14), start (5, 1).</b> Steepest descent zigzags; conjugate gradient finishes in 2 steps; Newton in 1. Raise κ to 100 and count steepest-descent steps.</li>
+      <li><b>Learning rate.</b> Turn off line search. For the quadratic, gradient descent converges only if α &lt; 2/λ<sub>max</sub> = 2/κ. Set α just above and just below that value.</li>
+      <li><b>Rosenbrock from (−1.2, 1).</b> Which methods follow the banana valley, and how many gradient evaluations does each need?</li>
+      <li><b>Himmelblau.</b> Start near (−0.3, −0.9) with undamped Newton: it can head for the local maximum or a saddle. Turn damping on and repeat.</li>
+      <li><b>Nelder–Mead.</b> Shrink the expansion γ toward 1. What happens to the triangle on Rosenbrock?</li>
+      <li><b>Bumpy bowl.</b> Its Hessian is singular at the minimum. Why do Newton and BFGS lose their fast convergence here?</li>
+    </ol>
+  </div>
+
+  <footer>Same algorithms as the Chapter 6 slides and demo notebooks (Heath Algorithms 6.3–6.6). Inspired by Ben Frederickson's interactive tutorial on numerical optimization (benfrederickson.com/numerical-optimization). Line searches use golden-section search (Meeting 23); f* = 0 for every function here.</footer>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- objective functions (analytic gradient and Hessian)
+const FUNCS = {
+  quadratic: {
+    label: "Quadratic 0.5x² + 0.5κy² (Heath Example 6.11)", view: [-6, 6, -6, 6], start: [5, 1], mins: [[0, 0]],
+    f: (x, y, k) => 0.5 * x * x + 0.5 * k * y * y,
+    g: (x, y, k) => [x, k * y], H: (x, y, k) => [[1, 0], [0, k]],
+    alpha: 0.1, formula: k => `f(x, y) = 0.5x² + ${(0.5 * k).toPrecision(3)}y²,  H = diag(1, ${k.toPrecision(3)}),  2/λmax = ${(2 / Math.max(1, k)).toPrecision(3)}`,
+  },
+  rosenbrock: {
+    label: "Rosenbrock banana", view: [-2, 2, -1, 3], start: [-1.2, 1], mins: [[1, 1]],
+    f: (x, y) => 100 * (y - x * x) ** 2 + (1 - x) ** 2,
+    g: (x, y) => [-400 * x * (y - x * x) - 2 * (1 - x), 200 * (y - x * x)],
+    H: (x, y) => [[1200 * x * x - 400 * y + 2, -400 * x], [-400 * x, 200]],
+    alpha: 0.0015, formula: () => "f(x, y) = 100(y − x²)² + (1 − x)²,  minimum at (1, 1)",
+  },
+  himmelblau: {
+    label: "Himmelblau (four minima)", view: [-5, 5, -5, 5], start: [0, 0],
+    mins: [[3, 2], [-2.805118, 3.131312], [-3.779310, -3.283186], [3.584428, -1.848126]],
+    f: (x, y) => (x * x + y - 11) ** 2 + (x + y * y - 7) ** 2,
+    g: (x, y) => { const a = x * x + y - 11, b = x + y * y - 7; return [4 * x * a + 2 * b, 2 * a + 4 * y * b]; },
+    H: (x, y) => { const a = x * x + y - 11, b = x + y * y - 7; return [[4 * a + 8 * x * x + 2, 4 * x + 4 * y], [4 * x + 4 * y, 2 + 4 * b + 8 * y * y]]; },
+    alpha: 0.01, formula: () => "f(x, y) = (x² + y − 11)² + (x + y² − 7)²,  local max near (−0.27, −0.92)",
+  },
+  bumpy: {
+    label: "Bumpy bowl (singular Hessian at x*)", view: [-4, 4, -4, 4], start: [3, 2.5], mins: [[0, 0]],
+    f: (x, y) => x * x + y * y + x * Math.sin(y) + y * Math.sin(x),
+    g: (x, y) => [2 * x + Math.sin(y) + y * Math.cos(x), 2 * y + x * Math.cos(y) + Math.sin(x)],
+    H: (x, y) => [[2 - y * Math.sin(x), Math.cos(y) + Math.cos(x)], [Math.cos(y) + Math.cos(x), 2 - x * Math.sin(y)]],
+    alpha: 0.1, formula: () => "f(x, y) = x² + y² + x·sin y + y·sin x,  H(0, 0) = [2 2; 2 2] is singular",
+  },
+  matyas: {
+    label: "Tilted bowl 0.26(x² + y²) − 0.48xy", view: [-10, 10, -10, 10], start: [-8, 6], mins: [[0, 0]],
+    f: (x, y) => 0.26 * (x * x + y * y) - 0.48 * x * y,
+    g: (x, y) => [0.52 * x - 0.48 * y, 0.52 * y - 0.48 * x], H: () => [[0.52, -0.48], [-0.48, 0.52]],
+    alpha: 1.0, formula: () => "f(x, y) = 0.26(x² + y²) − 0.48xy,  eigenvalues of H: 1.0 and 0.04 (κ = 25)",
+  },
+};
+const METHODS = [
+  { id: "gd", name: "Gradient descent", color: "--m-gd", on: true },
+  { id: "newton", name: "Newton", color: "--m-newton", on: true },
+  { id: "bfgs", name: "BFGS", color: "--m-bfgs", on: true },
+  { id: "cg", name: "Conjugate gradient", color: "--m-cg", on: false },
+  { id: "nm", name: "Nelder–Mead", color: "--m-nm", on: false },
+];
+const MAXIT = 3000;
+
+// ---------------------------------------------------------------- state
+const $ = id => document.getElementById(id);
+const S = { fn: "rosenbrock", kappa: 5, start: null, runs: {}, playing: false, timer: null };
+const P = () => FUNCS[S.fn];
+const fx = v => P().f(v[0], v[1], S.kappa);
+const gx = v => P().g(v[0], v[1], S.kappa);
+const Hx = v => P().H(v[0], v[1], S.kappa);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const add = (a, b, t = 1) => [a[0] + t * b[0], a[1] + t * b[1]];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+const nrm = a => Math.hypot(a[0], a[1]);
+const solve2 = (A, b) => { const d = A[0][0] * A[1][1] - A[0][1] * A[1][0]; if (!isFinite(d) || Math.abs(d) < 1e-300) return null;
+  return [(A[1][1] * b[0] - A[0][1] * b[1]) / d, (A[0][0] * b[1] - A[1][0] * b[0]) / d]; };
+
+// ---------------------------------------------------------------- line searches
+function counted(run) { return v => { run.nf++; return fx(v); }; }
+function exactLine(run, x, s) {
+  // "exact" line search: bracket the minimum of phi(a) = f(x + a s) by doubling, then golden-section search (Heath Alg. 6.1)
+  const f = counted(run), phi = a => f(add(x, s, a));
+  const view = P().view, scale = 0.02 * (view[1] - view[0]) / Math.max(nrm(s), 1e-300);
+  let a0 = 0, a1 = scale, f0 = phi(0), f1 = phi(a1), a2, f2;
+  if (f1 > f0) { a2 = a1; f2 = f1; a1 = a2 / 2; f1 = phi(a1); while (f1 > f0 && a1 > 1e-14 * scale) { a2 = a1; f2 = f1; a1 /= 2; f1 = phi(a1); } }
+  else { a2 = 2 * a1; f2 = phi(a2); let n = 0; while (f2 <= f1 && n++ < 60) { a0 = a1; f0 = f1; a1 = a2; f1 = f2; a2 *= 2; f2 = phi(a2); } }
+  const tau = (Math.sqrt(5) - 1) / 2; let a = a0, b = a2, c = b - tau * (b - a), d = a + tau * (b - a), fc = phi(c), fd = phi(d);
+  for (let i = 0; i < 60 && b - a > 1e-12 * (1 + Math.abs(b)); i++) {
+    if (fc < fd) { b = d; d = c; fd = fc; c = b - tau * (b - a); fc = phi(c); } else { a = c; c = d; fc = fd; d = a + tau * (b - a); fd = phi(d); }
+  }
+  return (a + b) / 2;
+}
+function backtrack(run, x, s, g, a = 1) {
+  const f = counted(run), f0 = f(x), slope = dot(g, s);
+  let n = 0; while (f(add(x, s, a)) > f0 + 1e-4 * a * slope && n++ < 60) a /= 2;
+  return a;
+}
+
+// ---------------------------------------------------------------- methods: init(run) and step(run) -> moves run.x, records run.dir
+const STEP = {
+  gd(run) {
+    const g = gx(run.x); run.ng++; const s = [-g[0], -g[1]]; run.dir = s;
+    const a = $("gdls").checked ? exactLine(run, run.x, s) : 10 ** +$("alpha").value;
+    run.x = add(run.x, s, a);
+  },
+  newton(run) {
+    const g = gx(run.x); run.ng++; let s = solve2(Hx(run.x), [-g[0], -g[1]]); run.nh++;
+    if ($("damped").checked) {
+      if (!s || dot(g, s) >= 0) s = [-g[0], -g[1]];
+      run.dir = s; run.x = add(run.x, s, backtrack(run, run.x, s, g));
+    } else {
+      if (!s) { run.status = "bad"; run.note = "singular Hessian"; return; }
+      run.dir = s; run.x = add(run.x, s);
+    }
+  },
+  bfgs(run) {
+    if (!run.B) { run.B = [[1, 0], [0, 1]]; run.g = gx(run.x); run.ng++; }
+    const g = run.g; let s = solve2(run.B, [-g[0], -g[1]]);
+    if (!s || dot(g, s) >= 0) { run.B = [[1, 0], [0, 1]]; s = [-g[0], -g[1]]; }
+    run.dir = s; const a = backtrack(run, run.x, s, g); s = [a * s[0], a * s[1]];
+    const xn = add(run.x, s), gn = gx(xn); run.ng++; const y = [gn[0] - g[0], gn[1] - g[1]], ys = dot(y, s);
+    if (ys > 1e-300) {
+      const B = run.B, Bs = [B[0][0] * s[0] + B[0][1] * s[1], B[1][0] * s[0] + B[1][1] * s[1]], sBs = dot(s, Bs);
+      run.B = [[B[0][0] + y[0] * y[0] / ys - Bs[0] * Bs[0] / sBs, B[0][1] + y[0] * y[1] / ys - Bs[0] * Bs[1] / sBs],
+               [B[1][0] + y[1] * y[0] / ys - Bs[1] * Bs[0] / sBs, B[1][1] + y[1] * y[1] / ys - Bs[1] * Bs[1] / sBs]];
+    }
+    run.x = xn; run.g = gn;
+  },
+  cg(run) {
+    // nonlinear CG (Polak–Ribière, restart every n = 2 steps or when beta < 0) with exact line search
+    if (!run.g) { run.g = gx(run.x); run.ng++; run.s = [-run.g[0], -run.g[1]]; run.j = 0; }
+    if (dot(run.g, run.s) >= 0) { run.s = [-run.g[0], -run.g[1]]; run.j = 0; }
+    run.dir = run.s; const a = exactLine(run, run.x, run.s); run.x = add(run.x, run.s, a);
+    const gn = gx(run.x); run.ng++; let beta = dot(gn, [gn[0] - run.g[0], gn[1] - run.g[1]]) / Math.max(dot(run.g, run.g), 1e-300);
+    run.j++; if (run.j % 2 === 0 || beta < 0) beta = 0;
+    run.s = [-gn[0] + beta * run.s[0], -gn[1] + beta * run.s[1]]; run.g = gn;
+  },
+  nm(run) {
+    const f = counted(run), gam = +$("expand").value, rho = +$("contract").value;
+    if (!run.S) { const v = P().view, h = 0.06 * (v[1] - v[0]); run.S = [run.x, add(run.x, [h, 0]), add(run.x, [0, h])].map(p => ({ p, v: f(p) })); }
+    const S = run.S.sort((a, b) => a.v - b.v), xo = [(S[0].p[0] + S[1].p[0]) / 2, (S[0].p[1] + S[1].p[1]) / 2];
+    const at = t => add(xo, [S[2].p[0] - xo[0], S[2].p[1] - xo[1]], t);
+    const r = { p: at(-1) }; r.v = f(r.p);
+    if (r.v < S[0].v) { const e = { p: at(-gam) }; e.v = f(e.p); S[2] = e.v < r.v ? e : r; run.op = e.v < r.v ? "expand" : "reflect"; }
+    else if (r.v < S[1].v) { S[2] = r; run.op = "reflect"; }
+    else {
+      const c = { p: r.v < S[2].v ? at(-rho) : at(rho) }; c.v = f(c.p);
+      if (c.v < Math.min(r.v, S[2].v)) { S[2] = c; run.op = "contract"; }
+      else { for (const i of [1, 2]) { S[i].p = add(S[0].p, [S[i].p[0] - S[0].p[0], S[i].p[1] - S[0].p[1]], 0.5); S[i].v = f(S[i].p); } run.op = "shrink"; }
+    }
+    S.sort((a, b) => a.v - b.v); run.dir = null; run.x = S[0].p;
+  },
+};
+
+function newRun(m) {
+  return { id: m.id, name: m.name, color: m.color, x: S.start.slice(), path: [S.start.slice()], fh: [fx(S.start)], k: 0, nf: 1, ng: 0, nh: 0, status: "run", dir: null };
+}
+function stepRun(run) {
+  if (run.status !== "run") return;
+  const before = run.x;
+  try { STEP[run.id](run); } catch (e) { run.status = "bad"; run.note = "error"; return; }
+  if (run.status !== "run") return;
+  run.k++; const fv = fx(run.x); run.path.push(run.x.slice()); run.fh.push(fv);
+  if (!isFinite(fv) || nrm(run.x) > 1e8) { run.status = "bad"; run.note = "diverged"; return; }
+  const gn = nrm(gx(run.x)), moved = run.id === "nm" ? Math.max(...run.S.map(q => nrm([q.p[0] - run.x[0], q.p[1] - run.x[1]]))) : nrm([run.x[0] - before[0], run.x[1] - before[1]]);
+  if (fv < 1e-15 || (run.id !== "nm" && gn < 1e-9) || moved < 1e-13) { run.status = "ok"; run.note = "converged"; }
+  else if (run.k >= MAXIT) { run.status = "max"; run.note = `${MAXIT} iterations`; }
+}
+
+// ---------------------------------------------------------------- setup and controls
+function selected() { return METHODS.filter(m => $("m_" + m.id).checked); }
+function reset(keepStart = false) {
+  if (!keepStart || !S.start) S.start = P().start.slice();
+  S.runs = {}; for (const m of selected()) S.runs[m.id] = newRun(m);
+  drawAll();
+}
+function stepAll() { Object.values(S.runs).forEach(stepRun); drawAll(); if (Object.values(S.runs).every(r => r.status !== "run")) pause(); }
+function play() { if (S.playing) return; S.playing = true; $("playbtn").textContent = "Pause"; tick(); }
+function pause() { S.playing = false; $("playbtn").textContent = "Play"; clearTimeout(S.timer); }
+function tick() { if (!S.playing) return; stepAll(); S.timer = setTimeout(tick, 1000 / +$("speed").value); }
+
+function buildControls() {
+  for (const [k, v] of Object.entries(FUNCS)) { const o = document.createElement("option"); o.value = k; o.textContent = v.label; $("fn").append(o); }
+  for (const m of METHODS) {
+    const l = document.createElement("label"); l.className = "chip"; l.style.setProperty("--chip", `var(${m.color})`);
+    l.innerHTML = `<input type="checkbox" id="m_${m.id}" ${m.on ? "checked" : ""}><span class="sw"></span>${m.name}`;
+    $("methods").append(l);
+    l.querySelector("input").addEventListener("change", () => { pause(); reset(true); });
+  }
+  $("fn").addEventListener("change", () => { S.fn = $("fn").value; setAlphaDefault(); pause(); reset(); syncLabels(); });
+  $("kappa").addEventListener("input", () => { S.kappa = +(10 ** +$("kappa").value).toPrecision(3); syncLabels(); pause(); reset(true); });
+  for (const id of ["alpha", "gdls", "damped", "expand", "contract"]) $(id).addEventListener("input", () => { syncLabels(); pause(); reset(true); });
+  $("speed").addEventListener("input", syncLabels);
+  $("arrows").addEventListener("change", drawAll);
+  $("playbtn").addEventListener("click", () => S.playing ? pause() : play());
+  $("stepbtn").addEventListener("click", () => { pause(); stepAll(); });
+  $("resetbtn").addEventListener("click", () => { pause(); reset(true); });
+  document.addEventListener("keydown", e => {
+    if (e.target.matches("input, select, button")) return;
+    if (e.code === "Space") { e.preventDefault(); S.playing ? pause() : play(); }
+    if (e.code === "ArrowRight") { pause(); stepAll(); }
+  });
+  const map = $("map");
+  map.addEventListener("click", e => { S.start = toWorld(e); pause(); reset(true); });
+  map.addEventListener("mousemove", e => { const w = toWorld(e); $("cursor").textContent = `x = ${w[0].toFixed(3)}, y = ${w[1].toFixed(3)}, f = ${fmt(fx(w))}`; });
+}
+function setAlphaDefault() { $("alpha").value = Math.log10(P().alpha); }
+function syncLabels() {
+  $("alphaval").textContent = (10 ** +$("alpha").value).toPrecision(3);
+  $("alpharow").style.opacity = $("gdls").checked ? 0.4 : 1;
+  $("kappaval").textContent = S.kappa.toPrecision(3);
+  $("kapparow").hidden = S.fn !== "quadratic";
+  $("expandval").textContent = (+$("expand").value).toFixed(1);
+  $("contractval").textContent = (+$("contract").value).toFixed(2);
+  $("speedval").textContent = `${$("speed").value} steps/s`;
+  $("formula").textContent = P().formula(S.kappa);
+  $("alphanote").textContent = S.fn === "quadratic" ? `converges only if α < 2/λmax = ${(2 / Math.max(1, S.kappa)).toPrecision(3)}` : "";
+}
+
+// ---------------------------------------------------------------- drawing: contour map
+let field = null;
+function toPx(p, W, H) { const v = P().view; return [(p[0] - v[0]) / (v[1] - v[0]) * W, (1 - (p[1] - v[2]) / (v[3] - v[2])) * H]; }
+function toWorld(e) { const r = $("map").getBoundingClientRect(), v = P().view;
+  return [v[0] + (e.clientX - r.left) / r.width * (v[1] - v[0]), v[3] - (e.clientY - r.top) / r.height * (v[3] - v[2])]; }
+function hexRGB(h) { h = h.replace("#", ""); if (h.length === 3) h = [...h].map(c => c + c).join(""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+function computeField() {
+  const N = 220, v = P().view, Z = new Float64Array(N * N);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const x = v[0] + (i + 0.5) / N * (v[1] - v[0]), y = v[3] - (j + 0.5) / N * (v[3] - v[2]);
+    Z[j * N + i] = Math.log10(1e-3 + Math.max(0, fx([x, y])));
+  }
+  const sorted = Array.from(Z).sort((a, b) => a - b), lo = sorted[0], hi = sorted[Math.floor(0.97 * (N * N - 1))];
+  return { N, Z, lo, hi, key: S.fn + S.kappa };
+}
+function marching(ctx, F, level, W, H) {
+  const { N, Z } = F, sx = W / N, sy = H / N;
+  ctx.beginPath();
+  for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) {
+    const a = Z[j * N + i], b = Z[j * N + i + 1], c = Z[(j + 1) * N + i + 1], d = Z[(j + 1) * N + i];
+    const pts = [];
+    const edge = (z1, z2, x1, y1, x2, y2) => { if ((z1 < level) !== (z2 < level)) { const t = (level - z1) / (z2 - z1); pts.push([(x1 + t * (x2 - x1) + 0.5) * sx, (y1 + t * (y2 - y1) + 0.5) * sy]); } };
+    edge(a, b, i, j, i + 1, j); edge(b, c, i + 1, j, i + 1, j + 1); edge(c, d, i + 1, j + 1, i, j + 1); edge(d, a, i, j + 1, i, j);
+    for (let k = 0; k + 1 < pts.length; k += 2) { ctx.moveTo(...pts[k]); ctx.lineTo(...pts[k + 1]); }
+  }
+  ctx.stroke();
+}
+function fitCanvas(c) { const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } return dpr; }
+function drawMap() {
+  const c = $("map"), dpr = fitCanvas(c), ctx = c.getContext("2d"), W = c.width, H = c.height;
+  if (!field || field.key !== S.fn + S.kappa) field = computeField();
+  const F = field, lo = hexRGB(css("--map-lo")), hi = hexRGB(css("--map-hi"));
+  const img = new ImageData(F.N, F.N);
+  for (let k = 0; k < F.N * F.N; k++) {
+    const t = Math.min(1, Math.max(0, (F.Z[k] - F.lo) / (F.hi - F.lo))), s = Math.pow(t, 0.8);
+    for (let q = 0; q < 3; q++) img.data[4 * k + q] = lo[q] + s * (hi[q] - lo[q]); img.data[4 * k + 3] = 255;
+  }
+  const off = new OffscreenCanvas(F.N, F.N); off.getContext("2d").putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 0, 0, W, H);
+  ctx.strokeStyle = css("--contour"); ctx.globalAlpha = 0.55; ctx.lineWidth = 1 * dpr;
+  for (let i = 1; i <= 22; i++) marching(ctx, F, F.lo + (F.hi - F.lo) * (i / 23) ** 1.3, W, H);
+  ctx.globalAlpha = 1;
+  for (const m of P().mins) star(ctx, toPx(m, W, H), 9 * dpr, css("--minimum"));
+  const runs = Object.values(S.runs);
+  for (const run of runs) {
+    const col = css(run.color); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2.2 * dpr;
+    if (run.id === "nm" && run.S) {
+      ctx.globalAlpha = 0.85; ctx.beginPath(); run.S.forEach((q, i) => { const p = toPx(q.p, W, H); i ? ctx.lineTo(...p) : ctx.moveTo(...p); }); ctx.closePath();
+      ctx.save(); ctx.globalAlpha = 0.3; ctx.fill(); ctx.restore(); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    ctx.beginPath(); run.path.forEach((p, i) => { const q = toPx(p, W, H); i ? ctx.lineTo(...q) : ctx.moveTo(...q); }); ctx.stroke();
+    if (run.id !== "nm") for (const p of run.path.slice(-400)) { const q = toPx(p, W, H); ctx.beginPath(); ctx.arc(q[0], q[1], 2.6 * dpr, 0, 7); ctx.fill(); }
+    const q = toPx(run.x, W, H); ctx.beginPath(); ctx.arc(q[0], q[1], 5 * dpr, 0, 7); ctx.fill();
+  }
+  const sp = toPx(S.start, W, H); ctx.fillStyle = css("--start"); ctx.fillRect(sp[0] - 6 * dpr, sp[1] - 6 * dpr, 12 * dpr, 12 * dpr);
+  const first = runs.find(r => r.status === "run" && r.id !== "nm");
+  if ($("arrows").checked && first) {
+    const g = gx(first.x), L = 0.12 * W, p = toPx(first.x, W, H), gn = nrm(g);
+    if (gn > 0) arrow(ctx, p, [p[0] - g[0] / gn * L, p[1] + g[1] / gn * L], css("--grad"), dpr);
+    const s = nextDirection(first);
+    if (s && nrm(s) > 0) { const n = nrm(s); arrow(ctx, p, [p[0] + s[0] / n * L, p[1] - s[1] / n * L], css("--dir"), dpr); }
+  }
+}
+function nextDirection(run) {
+  // the direction the method will search along next (without taking the step)
+  const g = gx(run.x);
+  if (run.id === "gd") return [-g[0], -g[1]];
+  if (run.id === "newton") { const s = solve2(Hx(run.x), [-g[0], -g[1]]); return s && ($("damped").checked ? dot(g, s) < 0 : true) ? s : [-g[0], -g[1]]; }
+  if (run.id === "bfgs") return run.B ? solve2(run.B, [-g[0], -g[1]]) : [-g[0], -g[1]];
+  if (run.id === "cg") return run.s || [-g[0], -g[1]];
+  return null;
+}
+function arrow(ctx, a, b, col, dpr) {
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), h = 10 * dpr;
+  ctx.beginPath(); ctx.moveTo(...b); ctx.lineTo(b[0] - h * Math.cos(ang - 0.4), b[1] - h * Math.sin(ang - 0.4)); ctx.lineTo(b[0] - h * Math.cos(ang + 0.4), b[1] - h * Math.sin(ang + 0.4)); ctx.closePath(); ctx.fill();
+}
+function star(ctx, p, r, col) {
+  ctx.fillStyle = col; ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(p[0] + rr * Math.cos(a), p[1] + rr * Math.sin(a)); }
+  ctx.closePath(); ctx.fill();
+}
+
+// ---------------------------------------------------------------- drawing: convergence chart
+function drawChart() {
+  const c = $("chart"), dpr = fitCanvas(c), ctx = c.getContext("2d"), W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+  const runs = Object.values(S.runs), kmax = Math.max(10, ...runs.map(r => r.k));
+  const padL = 44 * dpr, padB = 26 * dpr, padT = 8 * dpr, padR = 10 * dpr, ylo = -16, yhi = 4;
+  const X = k => padL + (k / kmax) * (W - padL - padR), Y = v => padT + (yhi - v) / (yhi - ylo) * (H - padT - padB);
+  ctx.font = `${11 * dpr}px ${css("--mono")}`; ctx.fillStyle = css("--muted"); ctx.strokeStyle = css("--line"); ctx.lineWidth = 1 * dpr;
+  for (let v = ylo; v <= yhi; v += 4) { ctx.beginPath(); ctx.moveTo(padL, Y(v)); ctx.lineTo(W - padR, Y(v)); ctx.stroke(); ctx.fillText(`1e${v}`, 2 * dpr, Y(v) + 4 * dpr); }
+  const tick = Math.pow(10, Math.floor(Math.log10(kmax))) / (kmax / Math.pow(10, Math.floor(Math.log10(kmax))) < 2.5 ? 2 : 1);
+  for (let k = 0; k <= kmax; k += tick) ctx.fillText(String(k), X(k) - 4 * dpr, H - 8 * dpr);
+  for (const run of runs) {
+    ctx.strokeStyle = css(run.color); ctx.lineWidth = 2.2 * dpr; ctx.beginPath();
+    run.fh.forEach((v, k) => { const y = Y(Math.max(ylo, Math.min(yhi, Math.log10(Math.max(v, 1e-30))))); k ? ctx.lineTo(X(k), y) : ctx.moveTo(X(k), y); });
+    ctx.stroke();
+  }
+  $("chartlegend").innerHTML = runs.map(r => `<span style="--c: var(${r.color})">${r.name}</span>`).join("");
+}
+
+// ---------------------------------------------------------------- readout
+const fmt = v => !isFinite(v) ? "–" : (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0)) ? v.toExponential(2) : v.toPrecision(4);
+function drawTable() {
+  const rows = Object.values(S.runs).map(r => {
+    const label = { run: "running", ok: r.note || "converged", bad: r.note || "failed", max: r.note }[r.status];
+    return `<tr><td><span class="name" style="--chip: var(${r.color})"><span class="sw"></span>${r.name}${r.id === "nm" && r.op ? ` <span class="mono" style="color:var(--muted)">(${r.op})</span>` : ""}</span></td>
+      <td><span class="pill ${r.status}">${label}</span></td><td class="num">${r.k}</td><td class="num">${fmt(fx(r.x))}</td>
+      <td class="num">${fmt(nrm(gx(r.x)))}</td><td class="num">${r.nf}</td><td class="num">${r.ng}</td></tr>`;
+  });
+  $("readout").innerHTML = rows.join("") || `<tr><td colspan="7">Select at least one method.</td></tr>`;
+  const live = Object.values(S.runs).filter(r => r.status === "run").length;
+  $("status").textContent = `${P().label.split(" (")[0]} · start (${S.start.map(v => v.toFixed(2)).join(", ")}) · ${live ? live + " running" : "all stopped"}`;
+}
+function drawAll() { drawMap(); drawChart(); drawTable(); }
+
+// ---------------------------------------------------------------- boot
+buildControls();
+const hash = location.hash.replace("#", "");
+if (FUNCS[hash]) S.fn = hash;
+$("fn").value = S.fn; setAlphaDefault(); S.kappa = +(10 ** +$("kappa").value).toPrecision(3); syncLabels();
+reset();
+for (let i = 0; i < 40; i++) Object.values(S.runs).forEach(stepRun);   // open in a working state: 40 iterations already taken
+drawAll();
+window.addEventListener("resize", () => drawAll());
+try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll); } catch (e) {}
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>

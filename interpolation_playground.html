@@ -1,0 +1,379 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Interpolation Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: the plot is the hero (left, wide); controls on the right; error/basis plot and readout below the plot.
+   Same visual language as the Chapter 6 Optimizer Explorer. Stacks to one column on phones. */
+:root {
+  --bg: #F6F8FB; --surface: #FFFFFF; --ink: #1F2433; --muted: #5B6478; --line: #D9DEE7; --grid: #E8ECF2; --focus: #0072B2;
+  --exact: #1F2433; --node: #D55E00;
+  --m-poly: #0072B2; --m-lin: #E69F00; --m-spline: #009E73; --m-pchip: #CC79A7;
+  --ok: #1E7F4F; --bad: #B3261E;
+  --display: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --body: "Spline Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --node: #FF8A4C; --m-poly: #56B4E9; --m-lin: #F5B935; --m-spline: #2DC79A; --m-pchip: #E39BC4;
+  --ok: #5BD69A; --bad: #FF7A70; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121722; --surface: #1A2130; --ink: #E6EAF2; --muted: #9AA4B8; --line: #2D3648; --grid: #232B3B; --focus: #56B4E9;
+  --exact: #E6EAF2; --node: #FF8A4C; --m-poly: #56B4E9; --m-lin: #F5B935; --m-spline: #2DC79A; --m-pchip: #E39BC4;
+  --ok: #5BD69A; --bad: #FF7A70; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 40px; display: grid; gap: 18px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px }
+h1 { font: 700 1.55rem/1.15 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+.sub { color: var(--muted); margin: 0; font-size: 0.92rem }
+.grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0 }
+canvas { display: block; width: 100%; max-width: 100%; touch-action: none }
+#plot { aspect-ratio: 16 / 10; cursor: crosshair; border-radius: 6px }
+#aux { aspect-ratio: 16 / 6 }
+.hint { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin-top: 8px }
+.mono, .val, td.num { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.controls { display: grid; gap: 14px }
+.section-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+select, button, input { font: inherit; color: inherit }
+select { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg) }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden }
+.seg button { border: 0; border-radius: 0; padding: 8px; background: var(--bg); font-weight: 600; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface) }
+.methods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px }
+.chip { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; user-select: none; font-size: 0.9rem }
+.chip input { accent-color: var(--chip); margin: 0 }
+.chip .sw { width: 14px; height: 4px; border-radius: 2px; background: var(--chip); flex: none }
+.chip:has(input:checked) { border-color: var(--chip) }
+.row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px }
+.row label { font-size: 0.9rem }
+.row input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--focus) }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem }
+.check input { accent-color: var(--focus); margin: 0 }
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 10px; margin: 0; display: grid; gap: 8px; min-width: 0 }
+legend { font-size: 0.8rem; font-weight: 600; padding: 0 4px; color: var(--muted) }
+button.plain { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-weight: 600 }
+button:focus-visible, select:focus-visible, input:focus-visible, .chip:focus-within { outline: 2px solid var(--focus); outline-offset: 2px }
+.tablewrap { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+th { font-weight: 600; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase }
+td.num { text-align: right }
+.name { display: flex; align-items: center; gap: 8px }
+.name .sw { width: 14px; height: 4px; border-radius: 2px; background: var(--chip) }
+.try { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.9rem }
+.try b { font-weight: 600 }
+footer { font-size: 0.8rem; color: var(--muted) }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr) } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Interpolation Playground</h1>
+      <p class="sub">CSc 302 · Chapter 7 · Heath §7.3–7.4 · drag the points, or sample a function</p>
+    </div>
+    <p class="sub mono" id="status"></p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <canvas id="plot" aria-label="Data points and interpolants. Drag a point to move it; click empty space to add one; shift-click a point to delete it."></canvas>
+      <div class="hint"><span id="cursor" class="mono">x = –, y = –</span><span id="hinttext"></span></div>
+    </div>
+
+    <div class="panel controls">
+      <div>
+        <p class="section-label">Mode</p>
+        <div class="seg" role="group" aria-label="Mode">
+          <button id="mode_data" aria-pressed="true">Your data</button>
+          <button id="mode_fn" aria-pressed="false">Sample a function</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="section-label">Interpolants</p>
+        <div class="methods" id="methods"></div>
+      </div>
+
+      <fieldset>
+        <legend>Cubic spline end condition</legend>
+        <select id="bc" aria-label="Cubic spline end condition">
+          <option value="natural">natural: S″ = 0 at both ends</option>
+          <option value="notaknot" selected>not-a-knot (scipy default)</option>
+        </select>
+      </fieldset>
+
+      <fieldset id="fnset" hidden>
+        <legend>Function and nodes</legend>
+        <select id="fn" aria-label="Function to sample">
+          <option value="runge">Runge 1/(1 + 25x²)</option>
+          <option value="sin">sin(πx)</option>
+          <option value="abs">|x| (a kink)</option>
+          <option value="step">tanh(20x) (a steep step)</option>
+          <option value="exp">eˣ</option>
+        </select>
+        <div class="row"><label for="n">number of points n</label><span class="val" id="nval"></span><input type="range" id="n" min="2" max="41" step="1" value="11"></div>
+        <div class="seg" role="group" aria-label="Node distribution">
+          <button id="nodes_eq" aria-pressed="true">equally spaced</button>
+          <button id="nodes_ch" aria-pressed="false">Chebyshev</button>
+        </div>
+      </fieldset>
+
+      <fieldset id="dataset">
+        <legend>Data</legend>
+        <label class="check"><input type="checkbox" id="basis"> show the scaled Lagrange basis functions yⱼℓⱼ(t)</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="plain" id="reset">Reset points</button>
+          <button class="plain" id="mono">Monotone data</button>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <p class="section-label" id="auxlabel"></p>
+      <canvas id="aux" aria-label="Second plot: error curves or basis functions"></canvas>
+    </div>
+    <div class="panel">
+      <p class="section-label">Readout</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>interpolant</th><th>smooth</th><th id="errhead">max |error|</th></tr></thead>
+        <tbody id="readout"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="section-label">Try this</p>
+    <ol class="try">
+      <li><b>Locality.</b> Drag one point up and down. The polynomial changes everywhere; the spline mostly near the point; PCHIP and piecewise linear only on the two neighbouring intervals.</li>
+      <li><b>Runge.</b> Sample Runge's function with equally spaced points and raise n from 5 to 21: the polynomial error explodes near ±1. Switch to Chebyshev points.</li>
+      <li><b>Monotone data.</b> Press "Monotone data". Which interpolants overshoot? Which one keeps the data's shape?</li>
+      <li><b>Lagrange basis.</b> Turn on the basis functions: each yⱼℓⱼ is zero at every node except its own. Their sum is the blue polynomial.</li>
+      <li><b>Kinks and steps.</b> Sample |x| or tanh(20x). Which interpolant converges fastest as n grows, and which is fooled?</li>
+    </ol>
+  </div>
+
+  <footer>Polynomial: barycentric form of the Lagrange interpolant (Heath §7.3.2). Cubic spline: second-derivative (moment) formulation. PCHIP: Fritsch–Carlson monotone Hermite cubic (Heath §7.4.1, scipy's PchipInterpolator). Companion to the Chapter 7 slides and demo notebooks.</footer>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const METHODS = [
+  { id: "poly", name: "Polynomial", color: "--m-poly", smooth: "C∞, global", on: true },
+  { id: "lin", name: "Piecewise linear", color: "--m-lin", smooth: "C⁰", on: false },
+  { id: "spline", name: "Cubic spline", color: "--m-spline", smooth: "C²", on: true },
+  { id: "pchip", name: "PCHIP", color: "--m-pchip", smooth: "C¹, monotone", on: false },
+];
+const FUNCS = { runge: x => 1 / (1 + 25 * x * x), sin: x => Math.sin(Math.PI * x), abs: x => Math.abs(x), step: x => Math.tanh(20 * x), exp: x => Math.exp(x) };
+const DEFAULT_PTS = [[0.5, 1], [1.8, 3.2], [3, 2], [4.4, 4.6], [5.6, 3.6], [7, 1.4], [8.3, 2.4], [9.5, 3]];
+const MONO_PTS = [[0.5, 0.5], [1.5, 0.6], [2.5, 0.8], [3.5, 1.0], [4.5, 5.6], [5.5, 6.0], [6.5, 6.1], [7.5, 6.2], [8.5, 6.3], [9.5, 6.4]];
+const S = { mode: "data", pts: DEFAULT_PTS.map(p => p.slice()), fn: "runge", n: 11, nodes: "eq", drag: -1 };
+
+// ---------------------------------------------------------------- interpolants
+function bary(xs, ys) {
+  const n = xs.length, w = xs.map((xj, j) => { let p = 1; for (let k = 0; k < n; k++) if (k !== j) p *= (xj - xs[k]); return 1 / p; });
+  return x => { let num = 0, den = 0; for (let j = 0; j < n; j++) { const d = x - xs[j]; if (d === 0) return ys[j]; const c = w[j] / d; num += c * ys[j]; den += c; } return num / den; };
+}
+function linear(xs, ys) {
+  return x => { let i = 0; while (i < xs.length - 2 && x > xs[i + 1]) i++; const t = (x - xs[i]) / (xs[i + 1] - xs[i]); return ys[i] + t * (ys[i + 1] - ys[i]); };
+}
+function solveDense(A, b) {   // Gaussian elimination with partial pivoting (small n)
+  const n = b.length; A = A.map(r => r.slice()); b = b.slice();
+  for (let k = 0; k < n; k++) {
+    let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[p][k])) p = i;
+    [A[k], A[p]] = [A[p], A[k]]; [b[k], b[p]] = [b[p], b[k]];
+    for (let i = k + 1; i < n; i++) { const m = A[i][k] / A[k][k]; for (let j = k; j < n; j++) A[i][j] -= m * A[k][j]; b[i] -= m * b[k]; }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; }
+  return x;
+}
+function spline(xs, ys, bc) {
+  const n = xs.length; if (n < 3) return linear(xs, ys);
+  const h = []; for (let i = 0; i < n - 1; i++) h.push(xs[i + 1] - xs[i]);
+  const A = Array.from({ length: n }, () => new Array(n).fill(0)), b = new Array(n).fill(0);
+  for (let i = 1; i < n - 1; i++) {   // moment equations: h_{i-1}M_{i-1} + 2(h_{i-1}+h_i)M_i + h_i M_{i+1} = 6(Δ_i - Δ_{i-1})
+    A[i][i - 1] = h[i - 1]; A[i][i] = 2 * (h[i - 1] + h[i]); A[i][i + 1] = h[i];
+    b[i] = 6 * ((ys[i + 1] - ys[i]) / h[i] - (ys[i] - ys[i - 1]) / h[i - 1]);
+  }
+  if (bc === "notaknot" && n >= 4) {  // S''' continuous at x_1 and x_{n-2}
+    A[0][0] = -1 / h[0]; A[0][1] = 1 / h[0] + 1 / h[1]; A[0][2] = -1 / h[1];
+    A[n - 1][n - 3] = -1 / h[n - 3]; A[n - 1][n - 2] = 1 / h[n - 3] + 1 / h[n - 2]; A[n - 1][n - 1] = -1 / h[n - 2];
+  } else { A[0][0] = 1; A[n - 1][n - 1] = 1; }
+  const M = solveDense(A, b);
+  return x => {
+    let i = 0; while (i < n - 2 && x > xs[i + 1]) i++;
+    const a = xs[i + 1] - x, c = x - xs[i], hi = h[i];
+    return (M[i] * a ** 3 + M[i + 1] * c ** 3) / (6 * hi) + (ys[i] / hi - M[i] * hi / 6) * a + (ys[i + 1] / hi - M[i + 1] * hi / 6) * c;
+  };
+}
+function pchip(xs, ys) {
+  const n = xs.length; if (n < 3) return linear(xs, ys);
+  const h = [], del = []; for (let i = 0; i < n - 1; i++) { h.push(xs[i + 1] - xs[i]); del.push((ys[i + 1] - ys[i]) / h[i]); }
+  const d = new Array(n).fill(0);
+  for (let k = 1; k < n - 1; k++) {
+    if (del[k - 1] * del[k] > 0) { const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1]; d[k] = (w1 + w2) / (w1 / del[k - 1] + w2 / del[k]); }
+  }
+  const end = (h0, h1, d0, d1) => { let s = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1); if (Math.sign(s) !== Math.sign(d0)) s = 0; else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(s) > Math.abs(3 * d0)) s = 3 * d0; return s; };
+  d[0] = end(h[0], h[1], del[0], del[1]); d[n - 1] = end(h[n - 2], h[n - 3], del[n - 2], del[n - 3]);
+  return x => {
+    let i = 0; while (i < n - 2 && x > xs[i + 1]) i++;
+    const t = (x - xs[i]) / h[i], t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h[i] * d[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h[i] * d[i + 1];
+  };
+}
+function build(id, xs, ys) {
+  if (id === "poly") return bary(xs, ys);
+  if (id === "lin") return linear(xs, ys);
+  if (id === "spline") return spline(xs, ys, $("bc").value);
+  return pchip(xs, ys);
+}
+
+// ---------------------------------------------------------------- data for the current mode
+function nodesData() {
+  if (S.mode === "data") { const p = S.pts.slice().sort((a, b) => a[0] - b[0]); return [p.map(q => q[0]), p.map(q => q[1])]; }
+  const n = S.n, f = FUNCS[S.fn];
+  const xs = S.nodes === "eq" ? Array.from({ length: n }, (_, i) => n === 1 ? 0 : -1 + 2 * i / (n - 1))
+                              : Array.from({ length: n }, (_, i) => Math.cos((2 * (n - i) - 1) * Math.PI / (2 * n)));
+  return [xs, xs.map(f)];
+}
+function view() {
+  if (S.mode === "data") return [0, 10, -1.5, 8];
+  return { runge: [-1.05, 1.05, -0.6, 1.6], sin: [-1.05, 1.05, -1.6, 1.6], abs: [-1.05, 1.05, -0.4, 1.4], step: [-1.05, 1.05, -1.8, 1.8], exp: [-1.05, 1.05, -0.2, 3.0] }[S.fn];
+}
+
+// ---------------------------------------------------------------- drawing
+function fit(c) { const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } return dpr; }
+function frame(c, V, dpr, xlab = true) {
+  const ctx = c.getContext("2d"), W = c.width, H = c.height, pl = 40 * dpr, pb = (xlab ? 24 : 8) * dpr, pt = 8 * dpr, pr = 10 * dpr;
+  const X = x => pl + (x - V[0]) / (V[1] - V[0]) * (W - pl - pr), Y = y => pt + (V[3] - y) / (V[3] - V[2]) * (H - pt - pb);
+  ctx.clearRect(0, 0, W, H); ctx.font = `${11 * dpr}px ${css("--mono")}`; ctx.lineWidth = 1 * dpr;
+  const step = v => { const r = v / 6, p = 10 ** Math.floor(Math.log10(r)); return [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= r); };
+  const sx = step(V[1] - V[0]), sy = step(V[3] - V[2]);
+  for (let x = Math.ceil(V[0] / sx) * sx; x <= V[1]; x += sx) { ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(X(x), pt); ctx.lineTo(X(x), H - pb); ctx.stroke(); if (xlab) { ctx.fillStyle = css("--muted"); ctx.fillText(+x.toFixed(2), X(x) - 6 * dpr, H - 6 * dpr); } }
+  for (let y = Math.ceil(V[2] / sy) * sy; y <= V[3]; y += sy) { ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(pl, Y(y)); ctx.lineTo(W - pr, Y(y)); ctx.stroke(); ctx.fillStyle = css("--muted"); ctx.fillText(+y.toFixed(2), 2 * dpr, Y(y) + 4 * dpr); }
+  return { ctx, X, Y, W, H, pl, pr, pt, pb };
+}
+function curve(ctx, X, Y, f, x0, x1, V, col, lw, dash = []) {
+  ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash); ctx.beginPath(); let on = false;
+  for (let k = 0; k <= 600; k++) {
+    const x = x0 + (x1 - x0) * k / 600, y = f(x);
+    if (!isFinite(y)) { on = false; continue; }
+    const yy = Math.max(V[2] - 10 * (V[3] - V[2]), Math.min(V[3] + 10 * (V[3] - V[2]), y));
+    on ? ctx.lineTo(X(x), Y(yy)) : ctx.moveTo(X(x), Y(yy)); on = true;
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+let interps = {};
+function draw() {
+  const c = $("plot"), dpr = fit(c), V = view(), [xs, ys] = nodesData();
+  const g = frame(c, V, dpr); const { ctx, X, Y } = g;
+  ctx.save(); ctx.beginPath(); ctx.rect(g.pl, g.pt, g.W - g.pl - g.pr, g.H - g.pt - g.pb); ctx.clip();
+  interps = {};
+  const sel = METHODS.filter(m => $("m_" + m.id).checked);
+  for (const m of sel) interps[m.id] = xs.length >= 2 ? build(m.id, xs, ys) : null;
+  if (S.mode === "fn") curve(ctx, X, Y, FUNCS[S.fn], V[0], V[1], V, css("--exact"), 2 * dpr);
+  if (S.mode === "data" && $("basis").checked && xs.length >= 2) {
+    xs.forEach((_, j) => { const e = ys.map((_, k) => (k === j ? ys[j] : 0)); curve(ctx, X, Y, bary(xs, e), V[0], V[1], V, css("--m-poly"), 1.2 * dpr, [5 * dpr, 4 * dpr]); });
+  }
+  const x0 = xs[0], x1 = xs[xs.length - 1];
+  for (const m of sel) if (interps[m.id]) curve(ctx, X, Y, interps[m.id], S.mode === "data" && m.id === "poly" ? V[0] : x0, S.mode === "data" && m.id === "poly" ? V[1] : x1, V, css(m.color), 2.6 * dpr);
+  ctx.restore();
+  ctx.fillStyle = css("--node");
+  xs.forEach((x, i) => { ctx.beginPath(); ctx.arc(X(x), Y(ys[i]), (S.mode === "data" ? 7 : 4.5) * dpr, 0, 7); ctx.fill(); });
+  drawAux(xs, ys, sel); table(sel, xs, ys);
+  $("status").textContent = S.mode === "data" ? `${xs.length} points · polynomial of degree ${xs.length - 1}` : `${S.fn} · n = ${S.n} · ${S.nodes === "eq" ? "equally spaced" : "Chebyshev"} nodes`;
+  $("hinttext").textContent = S.mode === "data" ? "drag a point · click empty space to add · shift-click to delete" : "the black curve is the true function";
+}
+function errors(sel) {
+  const f = FUNCS[S.fn], out = {};
+  for (const m of sel) { const p = interps[m.id]; let e = 0; for (let k = 0; k <= 2000; k++) { const x = -1 + 2 * k / 2000; e = Math.max(e, Math.abs(p(x) - f(x))); } out[m.id] = e; }
+  return out;
+}
+function drawAux(xs, ys, sel) {
+  const c = $("aux"), dpr = fit(c);
+  if (S.mode === "fn") {
+    $("auxlabel").textContent = "log₁₀ |f(x) − p(x)| across the interval";
+    const V = [-1.05, 1.05, -16, 2], g = frame(c, V, dpr), f = FUNCS[S.fn];
+    for (const m of sel) curve(g.ctx, g.X, g.Y, x => Math.log10(Math.max(1e-16, Math.abs(interps[m.id](x) - f(x)))), -1, 1, V, css(m.color), 2 * dpr);
+  } else {
+    $("auxlabel").textContent = "first derivative of each interpolant (smoothness made visible)";
+    const V = [0, 10, -8, 8], g = frame(c, V, dpr);
+    g.ctx.save(); g.ctx.beginPath(); g.ctx.rect(g.pl, g.pt, g.W - g.pl - g.pr, g.H - g.pt - g.pb); g.ctx.clip();
+    for (const m of sel) { const p = interps[m.id]; if (p) curve(g.ctx, g.X, g.Y, x => (p(x + 1e-4) - p(x - 1e-4)) / 2e-4, xs[0] + 2e-4, xs[xs.length - 1] - 2e-4, V, css(m.color), 2 * dpr); }
+    g.ctx.restore();
+  }
+}
+function table(sel, xs, ys) {
+  const err = S.mode === "fn" ? errors(sel) : null;
+  $("errhead").textContent = S.mode === "fn" ? "max |error|" : "p(x) at cursor";
+  $("readout").innerHTML = sel.map(m => `<tr><td><span class="name" style="--chip: var(${m.color})"><span class="sw"></span>${m.name}</span></td><td>${m.smooth}</td>
+    <td class="num" id="v_${m.id}">${err ? err[m.id].toExponential(2) : "–"}</td></tr>`).join("") || `<tr><td colspan="3">Tick at least one interpolant.</td></tr>`;
+}
+
+// ---------------------------------------------------------------- interaction
+function toWorld(e) { const c = $("plot"), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, V = view();
+  const pl = 40, pr = 10, pt = 8, pb = 24, W = r.width, H = r.height;
+  return [V[0] + (e.clientX - r.left - pl) / (W - pl - pr) * (V[1] - V[0]), V[3] - (e.clientY - r.top - pt) / (H - pt - pb) * (V[3] - V[2])]; }
+function nearest(w) { const V = view(), sx = (V[1] - V[0]) / 40, sy = (V[3] - V[2]) / 25; let best = -1, bd = 1;
+  S.pts.forEach((p, i) => { const d = Math.hypot((p[0] - w[0]) / sx, (p[1] - w[1]) / sy); if (d < bd) { bd = d; best = i; } }); return best; }
+const plot = $("plot");
+plot.addEventListener("pointerdown", e => {
+  if (S.mode !== "data") return;
+  const w = toWorld(e), i = nearest(w);
+  if (i >= 0 && e.shiftKey) { if (S.pts.length > 2) S.pts.splice(i, 1); draw(); return; }
+  if (i >= 0) S.drag = i; else { S.pts.push(w); S.drag = S.pts.length - 1; }
+  plot.setPointerCapture(e.pointerId); draw();
+});
+plot.addEventListener("pointermove", e => {
+  const w = toWorld(e); $("cursor").textContent = `x = ${w[0].toFixed(3)}, y = ${w[1].toFixed(3)}`;
+  if (S.mode === "data") for (const id in interps) { const el = $("v_" + id); if (el && interps[id]) el.textContent = interps[id](w[0]).toFixed(3); }
+  if (S.drag < 0) return;
+  const V = view(); let x = Math.min(V[1] - 0.05, Math.max(V[0] + 0.05, w[0]));
+  if (S.pts.some((p, j) => j !== S.drag && Math.abs(p[0] - x) < 0.05)) x += 0.06;   // keep the abscissas distinct
+  S.pts[S.drag] = [x, Math.min(V[3], Math.max(V[2], w[1]))]; draw();
+});
+plot.addEventListener("pointerup", () => { S.drag = -1; });
+function setMode(m) {
+  S.mode = m; $("mode_data").setAttribute("aria-pressed", m === "data"); $("mode_fn").setAttribute("aria-pressed", m === "fn");
+  $("fnset").hidden = m !== "fn"; $("dataset").hidden = m !== "data"; draw();
+}
+function setNodes(k) { S.nodes = k; $("nodes_eq").setAttribute("aria-pressed", k === "eq"); $("nodes_ch").setAttribute("aria-pressed", k === "ch"); draw(); }
+for (const m of METHODS) {
+  const l = document.createElement("label"); l.className = "chip"; l.style.setProperty("--chip", `var(${m.color})`);
+  l.innerHTML = `<input type="checkbox" id="m_${m.id}" ${m.on ? "checked" : ""}><span class="sw"></span>${m.name}`; $("methods").append(l);
+  l.querySelector("input").addEventListener("change", draw);
+}
+$("mode_data").addEventListener("click", () => setMode("data"));
+$("mode_fn").addEventListener("click", () => setMode("fn"));
+$("nodes_eq").addEventListener("click", () => setNodes("eq"));
+$("nodes_ch").addEventListener("click", () => setNodes("ch"));
+$("fn").addEventListener("change", () => { S.fn = $("fn").value; draw(); });
+$("n").addEventListener("input", () => { S.n = +$("n").value; $("nval").textContent = S.n; draw(); });
+$("bc").addEventListener("change", draw);
+$("basis").addEventListener("change", draw);
+$("reset").addEventListener("click", () => { S.pts = DEFAULT_PTS.map(p => p.slice()); draw(); });
+$("mono").addEventListener("click", () => { S.pts = MONO_PTS.map(p => p.slice()); $("m_pchip").checked = true; draw(); });
+$("nval").textContent = S.n;
+
+// deep links: #drag (default), #runge, #mono, #basis
+const h = location.hash.replace("#", "");
+if (h === "runge") { setMode("fn"); $("n").value = 13; S.n = 13; $("nval").textContent = 13; $("m_lin").checked = false; }
+else if (h === "mono") { S.pts = MONO_PTS.map(p => p.slice()); $("m_pchip").checked = true; setMode("data"); }
+else if (h === "basis") { $("basis").checked = true; setMode("data"); }
+else { $("m_lin").checked = true; $("m_pchip").checked = true; setMode("data"); }
+window.addEventListener("resize", draw);
+try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw); } catch (e) {}
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>
