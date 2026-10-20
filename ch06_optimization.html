@@ -1338,7 +1338,7 @@ const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 me
     ref: "Heath §6.5 · Examples 6.11–6.14",
     desc: `<p>2-D unconstrained optimization (steepest descent, Newton, Nelder–Mead, conjugate gradient, BFGS) is covered by the course's
       <b>Optimizer Explorer</b>: pick a test function, click a starting point and compare the methods' paths and convergence side by side.</p>
-      <p><a href="optimizer_explorer.html">Open the Optimizer Explorer</a> (course folder: <code>lectures/ch06_optimization/interactive/optimizer_explorer.html</code>).</p>`,
+      <p><a href="optimizer_explorer.html">Open the Optimizer Explorer</a></p>`,
     init(ctx) { ctx.plots.parentElement.querySelector(".plots").remove(); ctx.add(el("p", { class: "sub" }, "This tab only links to the existing tool.")); return () => {}; },
   };
 
