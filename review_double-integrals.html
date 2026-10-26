@@ -80,6 +80,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .wrap > * { min-width: 0 }
 .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; min-width: 0 }
 .box > h2 { font-size: 1.15rem; margin: 0 0 10px }
@@ -106,7 +119,7 @@ header.infohead .nav { margin: 0 }
 </head>
 <body>
 <div class="wrap">
-<header class="infohead"><div><h1>Review: double integrals and change of variables</h1><p class="sub">Review · Stewart §15.1, §15.3, §15.4, §15.9 (2-D) · CSc 302 meeting 27</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
+<header class="infohead"><div><h1>Review: double integrals and change of variables</h1><p class="sub">Review · Stewart §15.1, §15.3, §15.4, §15.9 (2-D)</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
 
 <section class="box">
 <h2>Learning objectives</h2>
@@ -116,7 +129,7 @@ header.infohead .nav { margin: 0 }
   <li>Compute mass, center of mass and probabilities with double integrals.</li>
   <li>Change variables in a double integral using the Jacobian determinant, with polar coordinates as the main case.</li>
 </ul>
-<p class="note">This page summarizes Stewart §15.1, §15.3, §15.4 and §15.9 (two dimensions only), the material of CSc 302 meeting 27 and Lab 13. Use it as a review before that meeting or before Quiz 6.</p>
+<p class="note">This page summarizes Stewart §15.1, §15.3, §15.4 and §15.9 (two dimensions only).</p>
 </section>
 
 <section class="box">
@@ -190,9 +203,9 @@ Hence (Stewart, Theorem 15.9.9), if \(T\) maps \(S\) one-to-one onto \(D\),
 <section class="box">
 <h2>4. Why CSc 302 needs this</h2>
 <ul>
-  <li><b>Tensor-product quadrature:</b> applying a 1-D rule (midpoint, trapezoid, Simpson, Gauss) in each direction is Fubini's Theorem done numerically. The cost grows like (points per direction)², which is why <b>Monte Carlo</b> wins in high dimensions (meeting 27, Lab 13).</li>
-  <li><b>The Jacobian determinant</b> here and the Jacobian matrix of Newton's method are the same matrix: one measures area stretching, the other gives the linear model (meetings 6, 19).</li>
-  <li><b>Probabilities and expected values</b> are double integrals, and often only numerical ones (Lab 13).</li>
+  <li><b>Tensor-product quadrature:</b> applying a 1-D rule (midpoint, trapezoid, Simpson, Gauss) in each direction is Fubini's Theorem done numerically. The cost grows like (points per direction)², which is why <b>Monte Carlo</b> wins in high dimensions.</li>
+  <li><b>The Jacobian determinant</b> here and the Jacobian matrix of Newton's method are the same matrix: one measures area stretching, the other gives the linear model.</li>
+  <li><b>Probabilities and expected values</b> are double integrals, and often only numerical ones.</li>
 </ul>
 <p class="note">Try it: <a href="mv_several-variables.html#double-integrals">Double integrals: Riemann sums and tensor rules</a>, <a href="mv_several-variables.html#polar">Polar coordinates and the Jacobian</a>, and <a href="ch08_integration-differentiation.html#monte-carlo-2d">Monte Carlo integration in 2-D</a>.</p>
 </section>
@@ -211,7 +224,7 @@ Hence (Stewart, Theorem 15.9.9), if \(T\) maps \(S\) one-to-one onto \(D\),
 </ol>
 </section>
 
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>

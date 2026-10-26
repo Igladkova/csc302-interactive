@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 8 \u00b7 CSc 302 meetings 26\u201328 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 8 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 8 modules not covered by the Integration Explorer: finite difference approximations, numerical
    differentiation of data, cancellation of errors in Newton-Cotes rules, Richardson
    extrapolation, Romberg integration and Monte Carlo integration in 1-D and 2-D. Heath §8.3, §8.4.4, §8.6-8.7. */
@@ -1141,7 +1176,7 @@ const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 
   /* ---------- cancellation of errors in Newton-Cotes rules ---------- */
   const cancel = {
     id: "cancellation-of-errors", title: "Cancellation of errors",
-    ref: "Heath §8.3.1 (Newton–Cotes: odd number of points gains a degree) · Example 8.2",
+    ref: "Heath §8.3.1 (Newton–Cotes: odd number of points gains a degree)",
     desc: `<p>An n-point Newton–Cotes rule integrates the interpolating polynomial of degree n − 1, so it is exact for polynomials of degree n − 1 — but when n is odd it is exact for degree n as well.
       The plot shows why: for f of degree n, f − p is a multiple of the nodal polynomial Π(x − xᵢ), which is antisymmetric about the midpoint for symmetric nodes, so the region where p overestimates (blue)
       and the region where it underestimates (pink) have equal areas and cancel. The midpoint rule (n = 1) and Simpson's rule (n = 3) are the familiar cases.</p>`,
@@ -1173,7 +1208,7 @@ const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 
   /* ---------- Richardson extrapolation ---------- */
   const richardson = {
     id: "richardson", title: "Richardson extrapolation",
-    ref: "Heath §8.7 · Example 8.8",
+    ref: "Heath §8.7",
     desc: `<p>If F(h) = a₀ + a₁hᵖ + O(hʳ), two values F(h) and F(h/2) eliminate the hᵖ term: a₀ ≈ F(h/2) + (F(h/2) − F(h))/(2ᵖ − 1), with error O(hʳ).
       Here F(h) is a finite difference approximation of f′(x); the plot compares the error of F(h) with that of the extrapolated value, and the table repeats the elimination to build a triangular tableau.</p>`,
     tries: ["Forward difference (p = 1): one extrapolation gives a second-order formula — the slope doubles.", "Centered difference (p = 2, r = 4): each column gains two orders.", "Go to very small h: rounding error stops the improvement."],
@@ -1201,13 +1236,13 @@ const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 
   /* ---------- Romberg integration ---------- */
   const romberg = {
     id: "romberg", title: "Romberg integration",
-    ref: "Heath §8.7 · Example 8.9",
+    ref: "Heath §8.7",
     desc: `<p>The composite trapezoid rule T(h) has an error expansion in even powers of h. Romberg integration computes T(h), T(h/2), T(h/4), … and applies Richardson extrapolation repeatedly:
       R<sub>i,j</sub> = R<sub>i,j−1</sub> + (R<sub>i,j−1</sub> − R<sub>i−1,j−1</sub>)/(4<sup>j</sup> − 1). The second column equals Simpson's rule; each further column gains two orders of accuracy for smooth f.</p>`,
-    tries: ["∫₀^π sin x dx (Heath Example 8.9): compare R₁₁ with Simpson's rule.", "√x on [0, 1] is not smooth at 0: the columns stop improving.", "A periodic function over a full period: the trapezoid column is already excellent."],
+    tries: ["∫ sin x dx over [0, π]: compare R₁₁ with Simpson's rule.", "√x on [0, 1] is not smooth at 0: the columns stop improving.", "A periodic function over a full period: the trapezoid column is already excellent."],
     init(ctx) {
       const conv = ctx.plot("Error of each column versus h", { aspect: "16 / 9", logx: true, logy: true });
-      const P = [["sin(x)", 0, Math.PI, "∫₀^π sin x dx = 2"], ["exp(x)", 0, 1, "∫₀¹ eˣ dx"], ["sqrt(x)", 0, 1, "∫₀¹ √x dx = 2/3"], ["1/(1 + 25*x^2)", -1, 1, "Runge function on [−1, 1]"], ["exp(cos(x))", 0, 2 * Math.PI, "periodic: ∫₀^2π e^(cos x) dx"]];
+      const P = [["sin(x)", 0, Math.PI, "∫ sin x dx over [0, π] = 2"], ["exp(x)", 0, 1, "∫₀¹ eˣ dx"], ["sqrt(x)", 0, 1, "∫₀¹ √x dx = 2/3"], ["1/(1 + 25*x^2)", -1, 1, "Runge function on [−1, 1]"], ["exp(cos(x))", 0, 2 * Math.PI, "periodic: ∫ exp(cos x) dx over [0, 2π]"]];
       const sel = UI.select({ label: "Integral", options: P.map((p, i) => [String(i), p[3]]) }, () => ctx.redraw());
       const lev = UI.slider({ label: "Levels", min: 2, max: 10, step: 1, value: 6, fmt: v => v }, () => ctx.redraw());
       ctx.add(sel, lev); const out = ctx.readout("Romberg tableau");
@@ -1236,7 +1271,7 @@ const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 
       init(ctx) {
         const plot = ctx.plot(two ? "Random points: inside (blue) and outside (orange)" : "f and the random samples", { aspect: two ? "1 / 1" : "16 / 8", equal: two, half: two });
         const est = ctx.plot("Estimate versus n (±2σ band)", { aspect: two ? "1 / 1" : "16 / 6", logx: true, half: two }), err = ctx.plot("|error| versus n", { aspect: "16 / 6", logx: true, logy: true });
-        const P1 = [["sin(x)", 0, Math.PI, "∫₀^π sin x dx = 2"], ["exp(-x^2)", 0, 2, "∫₀² e^(−x²) dx"], ["sqrt(x)", 0, 1, "∫₀¹ √x dx"]];
+        const P1 = [["sin(x)", 0, Math.PI, "∫ sin x dx over [0, π] = 2"], ["exp(-x^2)", 0, 2, "∫₀² exp(−x²) dx"], ["sqrt(x)", 0, 1, "∫₀¹ √x dx"]];
         const sel = two ? null : UI.select({ label: "Integral", options: P1.map((p, i) => [String(i), p[3]]) }, () => { reset(); ctx.redraw(); });
         const seed = UI.input({ label: "Random seed", value: "301", type: "number" }, () => { reset(); ctx.redraw(); });
         let rng, n = 0, sum = 0, sum2 = 0, pts = [], hist = [];
@@ -1272,13 +1307,9 @@ const PAGE = {"title": "Integration and Differentiation", "sub": "Heath Chapter 
     };
   }
 
-  const explorerLink = {
+  const explorerLink = {   // shows the course's Integration Explorer inside the tab
     id: "newton-cotes", title: "Newton–Cotes and adaptive quadrature",
-    ref: "Heath §8.3.1, §8.3.3, §8.3.5–8.3.6",
-    desc: `<p>Newton–Cotes and adaptive quadrature are covered by the course's <b>Integration Explorer</b>: shaded panels for left, right, midpoint, trapezoid, Simpson and 2-point Gauss rules,
-      a comparison table, a log–log error plot, and an adaptive Simpson mode that shows where the panels are refined.</p>
-      <p><a href="integration_explorer.html">Open the Integration Explorer</a></p>`,
-    init(ctx) { ctx.plots.remove(); ctx.add(el("p", { class: "sub" }, "This tab only links to the existing tool.")); return () => {}; },
+    ref: "Integration Explorer · Heath §8.3.1, §8.3.3, §8.3.5–8.3.6", embed: "integration_explorer.html",
   };
 
   UI.page(Object.assign({}, PAGE, { modules: [fda, nderiv, cancel, explorerLink, richardson, romberg, mcModule(false), mcModule(true)] }));

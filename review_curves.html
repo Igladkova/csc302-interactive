@@ -80,6 +80,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .wrap > * { min-width: 0 }
 .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; min-width: 0 }
 .box > h2 { font-size: 1.15rem; margin: 0 0 10px }
@@ -106,7 +119,7 @@ header.infohead .nav { margin: 0 }
 </head>
 <body>
 <div class="wrap">
-<header class="infohead"><div><h1>Review: parametric curves and vector functions</h1><p class="sub">Review · Stewart §10.1, §13.1–13.2 (and arc length, §13.3) · CSc 302 meeting 25</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
+<header class="infohead"><div><h1>Review: parametric curves and vector functions</h1><p class="sub">Review · Stewart §10.1, §13.1–13.2 (and arc length, §13.3)</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
 
 <section class="box">
 <h2>Learning objectives</h2>
@@ -116,7 +129,7 @@ header.infohead .nav { margin: 0 }
   <li>Differentiate and integrate vector functions; find tangent vectors and tangent lines.</li>
   <li>Compute the arc length of a curve from \(|\mathbf r'(t)|\).</li>
 </ul>
-<p class="note">This page summarizes Stewart §10.1 and §13.1–13.2, with arc length from §13.3: the material of CSc 302 meeting 25 and Lab 12. Use it as a review before that meeting or before Quiz 6.</p>
+<p class="note">This page summarizes Stewart §10.1 and §13.1–13.2, with arc length from §13.3.</p>
 </section>
 
 <section class="box">
@@ -176,9 +189,9 @@ the integral of the speed. In the plane, drop the \(h'\) term (this is Stewart's
 <section class="box">
 <h2>3. Why CSc 302 needs this</h2>
 <ul>
-  <li><b>Spline curves:</b> interpolating \(x(t)\) and \(y(t)\) separately through data points gives a smooth curve through the points in order. This is how fonts, animation paths and robot trajectories are drawn (meeting 25, Lab 12).</li>
-  <li><b>Arc length</b> of a measured or interpolated curve, for example a GPS track, is a quadrature problem (meetings 25–26).</li>
-  <li><b>Tangent vectors</b> come from differentiating the interpolant, and differentiating data amplifies noise (meeting 28).</li>
+  <li><b>Spline curves:</b> interpolating \(x(t)\) and \(y(t)\) separately through data points gives a smooth curve through the points in order. This is how fonts, animation paths and robot trajectories are drawn.</li>
+  <li><b>Arc length</b> of a measured or interpolated curve, for example a GPS track, is a quadrature problem.</li>
+  <li><b>Tangent vectors</b> come from differentiating the interpolant, and differentiating data amplifies noise.</li>
 </ul>
 <p class="note">Try it: the <a href="ch07_interpolation.html#b-splines">B-splines tab</a> and the <a href="interpolation_playground.html">Interpolation Playground</a>.</p>
 </section>
@@ -197,7 +210,7 @@ the integral of the speed. In the plane, drop the \(h'\) term (this is Stewart's
 </ol>
 </section>
 
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>

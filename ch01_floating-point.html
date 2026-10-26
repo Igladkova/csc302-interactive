@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Floating-Point Arithmetic", "sub": "Heath Chapter 1 \u00b7 CSc 302 meetings 1\u20133 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Floating-Point Arithmetic", "sub": "Heath Chapter 1 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 1 modules: floating-point systems, rounding, a selectable-precision calculator, base conversion,
    the quadratic formula, infinite series, and rounding vs truncation error. Heath §1.2-1.3. */
 (() => {
@@ -1075,7 +1110,7 @@ const PAGE = {"title": "Floating-Point Arithmetic", "sub": "Heath Chapter 1 \u00
 
   const fpSystem = {
     id: "fp-system", title: "Floating-point systems",
-    ref: "Heath §1.3.1–1.3.3, §1.3.6 · Example 1.9 · Lab 1",
+    ref: "Heath §1.3.1–1.3.3, §1.3.6",
     desc: `<p>A normalized system F(β, p, L, U) has numbers ±d₀.d₁…d<sub>p−1</sub> × β<sup>E</sup> with d₀ ≠ 0 and L ≤ E ≤ U.
       Each tick is one machine number. Within one exponent the ticks are evenly spaced; the spacing grows by a factor β from one exponent to the next,
       so the <i>relative</i> spacing stays between β<sup>−p</sup> and β<sup>1−p</sup> = 2ε<sub>mach</sub> (lower plot; ε<sub>mach</sub> = ½β<sup>1−p</sup> for round to nearest).
@@ -1120,23 +1155,23 @@ const PAGE = {"title": "Floating-Point Arithmetic", "sub": "Heath Chapter 1 \u00
           stair(gaps, "--c1"); stair(gaps.map((g, i) => g / xs[i]), "--c2");
           gap.hline(2 * eps, { color: "--err", dash: [6, 4], width: 1.5 }).hline(2 * eps / s.beta, { color: "--err", dash: [2, 3], width: 1 });
           
-          gap.note("absolute gap", { color: "--c1", bold: true }).note("relative gap (gap / x)", { color: "--c2", bold: true, line: 1 }).note("β^(1−p) = 2ε_mach (dashed), β^(−p) (dotted)", { color: "--err", line: 2 });
+          gap.note("absolute gap", { color: "--c1", bold: true }).note("relative gap (gap / x)", { color: "--c2", bold: true, line: 1 }).note("β¹⁻ᵖ = 2ε_mach (dashed), β⁻ᵖ (dotted)", { color: "--err", line: 2 });
           gap.end();
         } else { gap.view(1, 10, 1, 10).begin(); gap.note("(too many numbers to list)"); gap.end(); }
         const list = many ? "" : "\nPositive numbers" + (pos.length > 48 ? ` (first 48 of ${pos.length})` : "") + ":\n" + pos.slice(0, 48).map(x => fmt(x, 6)).join(", ").replace(/(([^,]*,){8})/g, "$1\n");
         out.innerHTML = `${sysText(s)}
-count 2(β−1)β^(p−1)(U−L+1) + 1 = ${cnt.toLocaleString()}${sub.value ? `\n  + ${2 * (pow(s.beta, s.p - 1) - 1)} subnormals` : ""}
+count 2(β−1)βᵖ⁻¹(U−L+1) + 1 = ${cnt.toLocaleString()}${sub.value ? `\n  + ${2 * (pow(s.beta, s.p - 1) - 1)} subnormals` : ""}
 UFL = β^L               = ${fmt(ufl, 6)}
-OFL = β^(U+1)(1 − β^−p) = ${fmt(ofl, 6)}
-ε_mach (nearest) = ½β^(1−p) = ${fmt(eps, 6)}
-ε_mach (chop)    =  β^(1−p) = ${fmt(2 * eps, 6)}${sub.value ? `\nsmallest subnormal = β^(L−p+1) = ${fmt(smallest, 6)}` : ""}${list}`;
+OFL = βᵁ⁺¹(1 − β⁻ᵖ) = ${fmt(ofl, 6)}
+ε_mach (nearest) = ½β¹⁻ᵖ = ${fmt(eps, 6)}
+ε_mach (chop)    =  β¹⁻ᵖ = ${fmt(2 * eps, 6)}${sub.value ? `\nsmallest subnormal = βᴸ⁻ᵖ⁺¹ = ${fmt(smallest, 6)}` : ""}${list}`;
       };
     },
   };
 
   const rounding = {
     id: "rounding", title: "Rounding rules",
-    ref: "Heath §1.3.4–1.3.5 · Example 1.10",
+    ref: "Heath §1.3.4–1.3.5",
     desc: `<p>A real number x between two neighbouring machine numbers x₋ &lt; x &lt; x₊ must be replaced by one of them.
       The rule decides which: <b>chop</b> drops the extra digits (toward zero), <b>round to nearest</b> picks the closer neighbour (ties go to the one with an even last digit, as in IEEE),
       and the directed modes always go up or down. The staircase shows fl(x) over a range; the lower plot shows the relative error, which never exceeds ε<sub>mach</sub>
@@ -1190,7 +1225,7 @@ OFL = β^(U+1)(1 − β^−p) = ${fmt(ofl, 6)}
 
   const calculator = {
     id: "calculator", title: "Selectable-precision calculator",
-    ref: "Heath §1.3.8–1.3.9 · Examples 1.11, 1.14",
+    ref: "Heath §1.3.8–1.3.9",
     desc: `<p>Type an expression; every constant, every operation and every function value is rounded to p digits in base β, the way a machine with that precision would compute it.
       The table lists each operation exactly (on the already-rounded operands) and after rounding. The plot repeats the whole calculation for every precision and shows the relative error of the final answer
       against the exact value (computed separately with exact fractions and 60-digit arithmetic) — compare it with the dashed ε<sub>mach</sub> line to see when an expression loses more than rounding alone explains.</p>`,
@@ -1257,19 +1292,19 @@ OFL = β^(U+1)(1 − β^−p) = ${fmt(ofl, 6)}
         plot.view(-0.5, 50.5, 1e-18, 10).begin("k digits after the point", "error");
         plot.fn(k => pow(beta, -k), 0, 50, { color: "--err", dash: [5, 4], width: 1.2 });
         plot.line(ys.map((_, k) => k), ys, { color: "--c1", width: 1.5 }).pts(ys.map((_, k) => k), ys, { color: "--c1", r: 2.5 });
-        plot.note("β^(−k)", { color: "--err", right: true }).end();
+        plot.note("β⁻ᵏ", { color: "--err", right: true }).end();
         const sys = { beta, p: p.value, L: -2000, U: 2000 };
         const stored = N.fpRound(val, sys).v, sig = Math.abs(val) > 0 ? Math.floor(Math.log(Math.abs(val)) / Math.log(beta)) : 0;
         out.textContent = `${x.value} (base 10)\n= ${r.sign}${intS}.${fracS || "0"} (base ${beta})` + (r.period >= 0 ? `\n  digits in ( ) repeat forever` : r.terminated ? "\n  finite expansion" : "\n  (first 80 digits shown)") +
-          `\n\nnormalized: ${r.sign}d₀.d₁d₂… × ${beta}^${sig}` +
-          `\nstored with p = ${p.value} digits (round to nearest): ${N.fmt(stored, 17)}\nrepresentation error: ${fmt(Math.abs(stored - val), 3)}   relative: ${val ? fmt(Math.abs(stored - val) / Math.abs(val), 3) : "–"}\n½β^(1−p) = ${fmt(0.5 * pow(beta, 1 - p.value), 3)}`;
+          `\n\nnormalized: ${r.sign}d₀.d₁d₂… × ${beta}${UI.sup(sig)}` +
+          `\nstored with p = ${p.value} digits (round to nearest): ${N.fmt(stored, 17)}\nrepresentation error: ${fmt(Math.abs(stored - val), 3)}   relative: ${val ? fmt(Math.abs(stored - val) / Math.abs(val), 3) : "–"}\n½β¹⁻ᵖ = ${fmt(0.5 * pow(beta, 1 - p.value), 3)}`;
       };
     },
   };
 
   const quadratic = {
     id: "quadratic", title: "Quadratic formula",
-    ref: "Heath §1.3.9 · Example 1.15 · Lab 1 Part 3",
+    ref: "Heath §1.3.9",
     desc: `<p>The textbook formula x = (−b ± √(b² − 4ac)) / 2a subtracts two nearly equal numbers for the smaller root when b² ≫ 4ac.
       The stable version first computes the larger-magnitude root without cancellation, q = −(b + sign(b)√(b² − 4ac))/2 and x₁ = q/a, then gets the other one from the product of the roots, x₂ = c/q.
       All arithmetic below is carried out in p-digit decimal arithmetic; the plot repeats it for every p.</p>`,
@@ -1304,7 +1339,7 @@ OFL = β^(U+1)(1 − β^−p) = ${fmt(ofl, 6)}
         plot.fn(k => 0.5 * pow(10, 1 - k), 0.5, 16.5, { color: "--err", dash: [6, 4], width: 1.2 });
         for (const [j, col] of [[1, "--c2"], [2, "--c1"]]) { const ys = errs.map(e => Math.min(Math.max(e[j], fl), 10)); plot.line(errs.map(e => e[0]), ys, { color: col, width: 1.5 }).pts(errs.map(e => e[0]), ys, { color: col, r: 3.5 }); }
         plot.vline(p.value, { color: "--muted", dash: [2, 3], width: 1 });
-        plot.note("standard formula", { color: "--c2", bold: true, right: true }).note("stable formula", { color: "--c1", bold: true, right: true, line: 1 }).note("½·10^(1−p)", { color: "--err", right: true, line: 2 });
+        plot.note("standard formula", { color: "--c2", bold: true, right: true }).note("stable formula", { color: "--c1", bold: true, right: true, line: 1 }).note("½·10¹⁻ᵖ", { color: "--err", right: true, line: 2 });
         plot.end();
         const r = roots(A, B, C, p.value);
         const near = v => Math.abs(v - ex[0]) < Math.abs(v - ex[1]) ? ex[0] : ex[1];
@@ -1319,12 +1354,12 @@ OFL = β^(U+1)(1 − β^−p) = ${fmt(ofl, 6)}
 
   const series = {
     id: "series", title: "Infinite series",
-    ref: "Heath §1.3.8 · Example 1.12 (summing a series), §1.3.9 (cancellation)",
+    ref: "Heath §1.3.8, §1.3.9 (cancellation)",
     desc: `<p>Adding terms one at a time in p-digit arithmetic: once a new term is smaller than about ε<sub>mach</sub> times the running sum, adding it changes nothing,
       so the computed harmonic series (which diverges mathematically) stops growing. For the Taylor series of eˣ with x &lt; 0 the terms alternate in sign and are huge before they get small,
       so cancellation destroys the answer; summing the series for e<sup>|x|</sup> and taking the reciprocal avoids it.</p>`,
     tries: ["Harmonic series with p = 3: run to the end and note n and the final sum. Then p = 4.", "Predict the stopping n from 1/n ≈ ε_mach · S before you run.",
-      "eˣ series with x = −20 and p = 10: the result is not even the right sign. Switch to 'reciprocal of e^|x|'."],
+      "eˣ series with x = −20 and p = 10: the result is not even the right sign. Switch to 'eˣ as 1 / Σ |x|ᵏ/k!'."],
     init(ctx) {
       const plot = ctx.plot("Partial sums", { aspect: "16 / 9", logx: true });
       const kind = UI.select({ label: "Series", options: [["harm", "harmonic Σ 1/n"], ["exp", "Taylor series of eˣ, Σ xᵏ/k!"], ["expinv", "eˣ as 1 / Σ |x|ᵏ/k!"]] }, () => { reset(); ctx.redraw(); });
@@ -1374,12 +1409,12 @@ OFL = β^(U+1)(1 − β^−p) = ${fmt(ofl, 6)}
 
   const roundTrunc = {
     id: "rounding-truncation", title: "Rounding vs truncation error",
-    ref: "Heath §1.2.4 · Example 1.3 · Ch 1 slides (V-shaped error plot)",
+    ref: "Heath §1.2.4 · Ch 1 slides (V-shaped error plot)",
     desc: `<p>The finite difference (f(x+h) − f(x))/h has truncation error about M h/2 with M ≈ |f″(x)|, which shrinks with h, and rounding error about 2ε<sub>mach</sub>|f(x)|/h, which grows as h shrinks.
       Their sum is smallest near h ≈ 2√(ε<sub>mach</sub>|f|/M). The dots are actual errors computed in the chosen precision; the lines are the two bounds.
       The centered difference (f(x+h) − f(x−h))/2h has truncation error M₃h²/6, so its best h is larger and its best error smaller.</p>`,
     tries: ["Forward difference of sin at x = 1 in double: read off the best h and compare with √ε ≈ 1e−8.", "Switch to single precision: the V moves to h ≈ 1e−4 (√ε for single).",
-      "Centered difference: the left branch now has slope 2 and the minimum is near ε^(1/3).", "f(x) = exp(x) at x = 10: |f| is large, so the rounding branch moves up."],
+      "Centered difference: the left branch now has slope 2 and the minimum is near ∛ε.", "f(x) = exp(x) at x = 10: |f| is large, so the rounding branch moves up."],
     init(ctx) {
       const plot = ctx.plot("Error of the difference quotient versus h", { aspect: "16 / 10", logx: true, logy: true });
       const fsel = UI.input({ label: "f(x)", value: "sin(x)" }, () => ctx.redraw());

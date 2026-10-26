@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 meetings 8\u201310 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 2 modules: conditioning of 2x2 systems, vector p-norms, matrix condition number, the error bound,
    Gaussian elimination (LU) with pivoting, Gauss-Jordan elimination, Cholesky factorization. Heath §2.1-2.5. */
 (() => {
@@ -1071,7 +1106,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
 
   const conditioning = {
     id: "conditioning", title: "Conditioning (2 × 2)",
-    ref: "Heath §2.3.3–2.3.4 · Examples 2.5–2.6",
+    ref: "Heath §2.3.3–2.3.4",
     desc: `<p>Each equation of a 2 × 2 system is a line; the solution is where the lines cross. If the data are known only to d digits, each line becomes a band,
       and the solution can be anywhere in the shaded parallelogram where the bands overlap. Nearly parallel lines (an ill-conditioned matrix) give a long, thin parallelogram:
       a small change in the data moves the solution a long way along it. The ratio of the relative spread of the solution to the relative error in the data is bounded by cond(A).</p>`,
@@ -1116,7 +1151,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
 
   const pnorms = {
     id: "pnorms", title: "Vector p-norms",
-    ref: "Heath §2.3.1 · Example 2.3",
+    ref: "Heath §2.3.1",
     desc: `<p>The unit ball {x : ‖x‖<sub>p</sub> ≤ 1} is a diamond for p = 1, a disc for p = 2 and a square for p = ∞; for other p it lies in between,
       and it grows with p because ‖x‖<sub>p</sub> decreases as p increases. Drag the vector: the dashed curve is the p-ball of radius ‖x‖<sub>p</sub>, which passes through the tip.
       In n dimensions ‖x‖<sub>∞</sub> ≤ ‖x‖<sub>2</sub> ≤ ‖x‖<sub>1</sub> ≤ n‖x‖<sub>∞</sub>.</p>`,
@@ -1146,7 +1181,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
 
   const condNumber = {
     id: "condition-number", title: "Matrix condition number",
-    ref: "Heath §2.3.2–2.3.3 · Examples 2.4–2.6",
+    ref: "Heath §2.3.2–2.3.3",
     desc: `<p>A matrix norm measures the largest stretch ‖Ax‖/‖x‖ over the unit ball; ‖A⁻¹‖ measures the largest shrink. Their product cond(A) = max stretch / min stretch.
       In the 2-norm the image of the unit circle is an ellipse with semi-axes σ₁ ≥ σ₂ (the singular values), so cond₂(A) = σ₁/σ₂.
       Drag the vector on the left to see its image on the right.</p>`,
@@ -1244,7 +1279,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
 
   const gauss = {
     id: "gaussian-elimination", title: "Gaussian elimination (LU)",
-    ref: "Heath §2.4.3–2.4.5 · Examples 2.13–2.16",
+    ref: "Heath §2.4.3–2.4.5",
     desc: `<p>Step through elimination on the augmented matrix [A | b]. Each step chooses a pivot (outlined), stores the multipliers in L and zeros the column below the pivot,
       leaving the upper triangular U. With <b>partial pivoting</b> the largest entry of the column becomes the pivot, so every multiplier satisfies |m| ≤ 1; this keeps the entries
       from growing. Choose a precision of a few digits to watch what a tiny pivot does without pivoting: the computed x can be completely wrong even though A is well conditioned.</p>`,
@@ -1252,7 +1287,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
       "Compare the growth factor max|U| / max|A| for none, partial and complete pivoting on the 'growth' example."],
     init(ctx) {
       const cv = ctx.canvas("L, and the current [A | b]");
-      const ex = [{ name: "[2 1 1; 4 3 3; 8 7 9]", A: [[2, 1, 1], [4, 3, 3], [8, 7, 9]], b: [4, 10, 24] }, { name: "tiny pivot [1e−6 1; 1 1] (cf. Heath Example 2.15)", A: [[1e-6, 1], [1, 1]], b: [1, 2] },
+      const ex = [{ name: "[2 1 1; 4 3 3; 8 7 9]", A: [[2, 1, 1], [4, 3, 3], [8, 7, 9]], b: [4, 10, 24] }, { name: "tiny pivot [1e−6 1; 1 1]", A: [[1e-6, 1], [1, 1]], b: [1, 2] },
         { name: "zero pivot [0 1; 1 1]", A: [[0, 1], [1, 1]], b: [1, 2] }, { name: "growth example (4 × 4)", A: [[1, 0, 0, 1], [-1, 1, 0, 1], [-1, -1, 1, 1], [-1, -1, -1, 1]], b: [2, 1, 0, -2] },
         { name: "3 × 3 with a row swap", A: [[1, 2, 2], [4, 4, 2], [4, 6, 4]], b: [3, 6, 10] }];
       const n = UI.select({ label: "Size n", options: [2, 3, 4, 5].map(k => [k, `${k} × ${k}`]), value: "3" }, v => { A.resize(+v, +v); b.resize(+v, 1); restart(); });
@@ -1283,7 +1318,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
 
   const gaussJordan = {
     id: "gauss-jordan", title: "Gauss–Jordan elimination",
-    ref: "Heath §2.4.8 · Example 2.18",
+    ref: "Heath §2.4.8",
     desc: `<p>Gauss–Jordan eliminates <i>above and below</i> each pivot and scales the pivot row to 1, ending with the identity on the left and the solution on the right.
       It costs about n³/2 multiplications instead of n³/3 for LU plus the triangular solves, so it is used mostly for explaining matrix inversion (apply it to [A | I]).</p>`,
     tries: ["Step through the 3 × 3 example and count the operations in each step.", "Replace b by the columns of I (choose 'invert A'): the right block becomes A⁻¹."],
@@ -1315,7 +1350,7 @@ const PAGE = {"title": "Linear Systems", "sub": "Heath Chapter 2 \u00b7 CSc 302 
 
   const cholesky = {
     id: "cholesky", title: "Cholesky factorization",
-    ref: "Heath §2.5.1 · Example 2.21 · meeting 10",
+    ref: "Heath §2.5.1",
     desc: `<p>A symmetric positive definite matrix factors as A = LLᵀ with L lower triangular and positive diagonal: column j of L uses only the columns before it,
       ℓ<sub>jj</sub> = √(a<sub>jj</sub> − Σ<sub>k&lt;j</sub> ℓ<sub>jk</sub>²) and ℓ<sub>ij</sub> = (a<sub>ij</sub> − Σ<sub>k&lt;j</sub> ℓ<sub>ik</sub>ℓ<sub>jk</sub>)/ℓ<sub>jj</sub>.
       No pivoting is needed and it costs about n³/6 multiplications — half of LU. If a square root of a non-positive number is required, A is not positive definite.

@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 meetings 20\u201323 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 6 modules not covered by the Optimizer Explorer: golden section search, successive parabolic interpolation,
    Newton's method in 1-D, energy minimization (spring-mass), the penalty method and sequential quadratic programming,
    and — beyond the course syllabus — Gauss-Newton and Levenberg-Marquardt. Heath §6.1-6.7. */
@@ -1090,24 +1125,24 @@ const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 me
 
   /* ---------- one-dimensional methods ---------- */
   const P1 = {
-    heath: { name: "0.5 − x e^(−x²) (Heath Examples 6.8–6.10)", f: "0.5 - x*exp(-x^2)", r: [-0.2, 2.2], golden: [0, 2], spi: [0, 0.6, 1.2], newton: [1] },
+    heath: { name: "0.5 − x·exp(−x²)", f: "0.5 - x*exp(-x^2)", r: [-0.2, 2.2], golden: [0, 2], spi: [0, 0.6, 1.2], newton: [1] },
     quart: { name: "x⁴ − 3x² + x (two local minima)", f: "x^4 - 3*x^2 + x", r: [-2.2, 2], golden: [-2, 1], spi: [-2, -1, 0], newton: [0.5] },
     flat: { name: "x⁴ (degenerate minimum: f″(0) = 0)", f: "x^4", r: [-1.2, 1.5], golden: [-1, 1.4], spi: [-1, 0.3, 1.4], newton: [1] },
     abs: { name: "|x − 0.7| + 0.1 (not smooth)", f: "abs(x - 0.7) + 0.1", r: [-0.2, 2.2], golden: [0, 2], spi: [0, 0.6, 1.2], newton: [1] },
   };
   const INFO1 = {
-    golden: { title: "Golden section search", ref: "Heath §6.4.1 · Algorithm 6.1 · Example 6.8",
+    golden: { title: "Golden section search", ref: "Heath §6.4.1 · Algorithm 6.1",
       desc: `<p>For a unimodal f on [a, b], compare f at two interior points x₁ &lt; x₂ placed at fractions 1 − τ and τ of the interval, τ = (√5 − 1)/2 ≈ 0.618, and discard the end beyond the larger value.
         The surviving interior point lands exactly where the next step needs one, so each step costs one new function value and shrinks the interval by τ — linear convergence, no derivatives, guaranteed for unimodal f.</p>`,
-      tries: ["Heath's example on [0, 2]: compare x₁ = 0.764, x₂ = 1.236 with the book.", "The interval ratio column stays at 0.618.", "Two local minima: golden section finds one of them, depending on [a, b].", "|x − 0.7|: no derivative needed, still works."] },
-    spi: { title: "Successive parabolic interpolation", ref: "Heath §6.4.2 · Example 6.9",
+      tries: ["0.5 − x·exp(−x²) on [0, 2]: the first two points are x₁ = 0.764 and x₂ = 1.236.", "The interval ratio column stays at 0.618.", "Two local minima: golden section finds one of them, depending on [a, b].", "|x − 0.7|: no derivative needed, still works."] },
+    spi: { title: "Successive parabolic interpolation", ref: "Heath §6.4.2",
       desc: `<p>Fit a parabola through three points, take its vertex as the next point and drop the oldest point. Near a smooth minimum this converges superlinearly (order ≈ 1.324)
         but without safeguards it can head toward a maximum or stall. Practical routines (Brent's method) combine it with golden section search.</p>`,
-      tries: ["Heath's example with 0, 0.6, 1.2.", "The degenerate minimum of x⁴: the parabolas are poor models and convergence slows.", "|x − 0.7|: a parabola cannot fit a corner."] },
-    newton: { title: "Newton's method (1-D optimization)", ref: "Heath §6.4.3 · Algorithm 6.2 · Example 6.10",
+      tries: ["0.5 − x·exp(−x²) with 0, 0.6, 1.2.", "The degenerate minimum of x⁴: the parabolas are poor models and convergence slows.", "|x − 0.7|: a parabola cannot fit a corner."] },
+    newton: { title: "Newton's method (1-D optimization)", ref: "Heath §6.4.3 · Algorithm 6.2",
       desc: `<p>Newton's method minimizes the local quadratic model f(xₖ) + f′(xₖ)h + ½f″(xₖ)h² (dashed): xₖ₊₁ = xₖ − f′(xₖ)/f″(xₖ). This is Newton's method for f′(x) = 0, so it converges quadratically near a minimum with f″ &gt; 0
         — but it is attracted to any critical point, and where f″ &lt; 0 the model has a maximum, not a minimum.</p>`,
-      tries: ["Heath's example from x₀ = 1.", "Two local minima from x₀ = 0.5: f″ < 0 there, so the step goes to the local maximum.", "x⁴: f″(0) = 0, so the convergence is only linear."] },
+      tries: ["0.5 − x·exp(−x²) from x₀ = 1.", "Two local minima from x₀ = 0.5: f″ < 0 there, so the step goes to the local maximum.", "x⁴: f″(0) = 0, so the convergence is only linear."] },
   };
   function oneD(kind) {
     const info = INFO1[kind];
@@ -1168,10 +1203,10 @@ const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 me
     };
   }
 
-  /* ---------- energy minimization: spring-mass system (Heath Example 6.1) ---------- */
+  /* ---------- energy minimization: spring-mass system ---------- */
   const springs = {
     id: "energy", title: "Energy minimization (spring–mass)",
-    ref: "Heath §6.1–6.2 · Examples 6.1, 6.4 · methods of §6.5",
+    ref: "Heath §6.1–6.2 · methods of §6.5",
     desc: `<p>A mass hangs from two springs whose upper ends are a distance D apart. Its potential energy is the energy stored in both springs minus mgy (y measured downward);
       the mass comes to rest at the minimum of V(x, y), where ∇V = 0. The right plot shows level curves of V and the path of the chosen minimization method from a starting position you can drag;
       the left plot shows the springs at the current iterate.</p>`,
@@ -1212,19 +1247,19 @@ const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 me
 
   /* ---------- nonlinear least squares ---------- */
   const NLS = {
-    heath: { name: "x₁ e^(x₂ t), 4 points (Heath Example 6.15)", model: "x1*exp(x2*t)", t: [0, 1, 2, 3], y: [2, 0.7, 0.3, 0.1], x0: [1, 0], r: [0, 4, -2, 1] },
-    logi: { name: "x₁ / (1 + e^(−x₂(t − 3))), logistic growth", model: "x1/(1 + exp(-x2*(t - 3)))", t: [0, 1, 2, 3, 4, 5, 6], y: [0.2, 0.5, 1.3, 2.4, 3.6, 4.2, 4.6], x0: [3, 0.5], r: [0, 8, -0.5, 3] },
+    heath: { name: "x₁·exp(x₂t), 4 points", model: "x1*exp(x2*t)", t: [0, 1, 2, 3], y: [2, 0.7, 0.3, 0.1], x0: [1, 0], r: [0, 4, -2, 1] },
+    logi: { name: "x₁ / (1 + exp(−x₂(t − 3))), logistic growth", model: "x1/(1 + exp(-x2*(t - 3)))", t: [0, 1, 2, 3, 4, 5, 6], y: [0.2, 0.5, 1.3, 2.4, 3.6, 4.2, 4.6], x0: [3, 0.5], r: [0, 8, -0.5, 3] },
     sine: { name: "x₁ sin(x₂ t) (several local minima)", model: "x1*sin(x2*t)", t: [0, 0.5, 1, 1.5, 2, 2.5, 3], y: [0, 0.9, 1.5, 1.5, 0.95, 0.1, -0.8], x0: [1, 2.5], r: [-1, 4, -0.5, 4] },
   };
   function nlsModule(lm) {
     return {
       id: lm ? "levenberg-marquardt" : "gauss-newton", title: lm ? "Levenberg–Marquardt" : "Gauss–Newton",
-      ref: lm ? "Heath §6.6.2" : "Heath §6.6.1 · Example 6.15",
+      ref: lm ? "Heath §6.6.2" : "Heath §6.6.1",
       desc: (lm ? `<p>Levenberg–Marquardt solves (JᵀJ + μI)s = −Jᵀr, a Gauss–Newton step damped by μ: small μ gives Gauss–Newton, large μ a short steepest-descent step.
           The adaptive rule below accepts a step only if it lowers ‖r‖² and then decreases μ; otherwise it increases μ and tries again. This makes it robust where Gauss–Newton diverges.</p>`
         : `<p>To fit a model f(t, x) to data by least squares, Gauss–Newton linearizes the residual r(x) = y − f(t, x) at xₖ and solves the <i>linear</i> least squares problem J(xₖ)s ≅ −r(xₖ) for the step.
           It needs only first derivatives and converges fast when the residual at the solution is small, but it can diverge when the fit is poor or J is nearly rank deficient.</p>`) + BEYOND,
-      tries: lm ? ["Start the sine model at x₀ = (1, 2.5): compare with Gauss–Newton's tab from the same start.", "Fix μ at a large value: steady but slow."] : ["Heath's example from (1, 0): compare the first step (0.69, −0.61) with the book.", "Drag the start in the right plot; find a start from which Gauss–Newton fails."],
+      tries: lm ? ["Start the sine model at x₀ = (1, 2.5): compare with Gauss–Newton's tab from the same start.", "Fix μ at a large value: steady but slow."] : ["x₁·exp(x₂t) from (1, 0): the first step goes to (0.69, −0.61).", "Drag the start in the right plot; find a start from which Gauss–Newton fails."],
       init(ctx) {
         const fit = ctx.plot("Data and the model at xₖ", { aspect: "1 / 0.9", half: true }), par = ctx.plot("‖r(x)‖² over (x₁, x₂); drag the start", { aspect: "1 / 0.9", half: true });
         const pre = UI.select({ label: "Examples", options: Object.entries(NLS).map(([k, p]) => [k, p.name]) }, v => load(v));
@@ -1273,21 +1308,21 @@ const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 me
 
   /* ---------- constrained: penalty and SQP ---------- */
   const CON = {
-    heath: { name: "min 0.5x² + 2.5y² s.t. y − x + 1 = 0 (Heath Examples 6.7, 6.16)", f: "0.5*x^2 + 2.5*y^2", g: "y - x + 1", x0: [1, 1], r: [-1.5, 2, -1.5, 1.5] },
-    can: { name: "least surface of a can of volume 1: x = radius, y = height (Heath Examples 6.2, 6.6)", f: "2*pi*x*(x + y)", g: "pi*x^2*y - 1", x0: [1, 1], r: [0.1, 1.6, 0, 2] },
+    heath: { name: "min 0.5x² + 2.5y² s.t. y − x + 1 = 0", f: "0.5*x^2 + 2.5*y^2", g: "y - x + 1", x0: [1, 1], r: [-1.5, 2, -1.5, 1.5] },
+    can: { name: "Least surface area of a can of volume 1: x = radius, y = height", f: "2*pi*x*(x + y)", g: "pi*x^2*y - 1", x0: [1, 1], r: [0.1, 1.6, 0, 2] },
     circ: { name: "min (x − 2)² + (y − 1)² on the unit circle", f: "(x - 2)^2 + (y - 1)^2", g: "x^2 + y^2 - 1", x0: [0.2, 1.4], r: [-1.8, 2.6, -1.6, 1.8] },
     rosen: { name: "min Rosenbrock on the line x + y = 1.5", f: "100*(y - x^2)^2 + (1 - x)^2", g: "x + y - 1.5", x0: [-0.5, 1], r: [-1.5, 1.8, -0.6, 2.2] },
   };
   function conModule(sqp) {
     return {
       id: sqp ? "sqp" : "penalty", title: sqp ? "Sequential quadratic programming" : "Penalty method",
-      ref: sqp ? "Heath §6.7.1 · §6.2.3 and Example 6.6 (Lagrange conditions)" : "Heath §6.7.2 · Example 6.16",
+      ref: sqp ? "Heath §6.7.1 · §6.2.3 (Lagrange conditions)" : "Heath §6.7.2",
       desc: (sqp ? `<p>For min f(x) subject to g(x) = 0, the Lagrange conditions ∇f + λ∇g = 0, g = 0 are a nonlinear system in (x, λ). SQP applies Newton's method to it:
           each step solves the linear KKT system [H Jᵀ; J 0][s; δ] = −[∇f + Jᵀλ; g], which is the optimality system of a quadratic model of the Lagrangian with linearized constraint.
           Convergence is quadratic near a solution; the iterates need not be feasible on the way.</p>`
         : `<p>Replace the constrained problem by the unconstrained minimization of φ<sub>ρ</sub>(x) = f(x) + ½ρ g(x)² and let ρ grow. The minimizer x*<sub>ρ</sub> (filled dots) approaches the constrained solution
-          as ρ → ∞ — but the level curves of φ<sub>ρ</sub> get extremely elongated (the condition number of its Hessian grows like ρ), so each unconstrained problem gets harder.</p>`) + `<p class="ref">CSc 302 meeting 23 (Lagrange multipliers, penalty methods and SQP).</p>`,
-      tries: sqp ? ["Heath's problem from (1, 1): one step solves it (f quadratic, g linear).", "The can (Heath Example 6.6): the optimum has height = 2 × radius.", "The circle: watch the iterates leave the constraint and come back.", "Read λ in the table and check ∇f = −λ∇g at the solution."] : ["Heath Example 6.16: compare x*ρ for ρ = 1, 10, 100, 1000 with the book.", "Slide ρ up and watch the level curves of φρ hug the constraint line.", "The condition number column grows like ρ."],
+          as ρ → ∞ — but the level curves of φ<sub>ρ</sub> get extremely elongated (the condition number of its Hessian grows like ρ), so each unconstrained problem gets harder.</p>`),
+      tries: sqp ? ["min 0.5x² + 2.5y² from (1, 1): one step solves it (f quadratic, g linear).", "Check that the can with the smallest surface area and volume 1 has height = 2 × radius.", "The circle: watch the iterates leave the constraint and come back.", "Read λ in the table and check ∇f = −λ∇g at the solution."] : ["min 0.5x² + 2.5y²: compare x*ρ for ρ = 1, 10, 100, 1000.", "Slide ρ up and watch the level curves of φρ hug the constraint line.", "The condition number column grows like ρ."],
       init(ctx) {
         const plot = ctx.plot(sqp ? "Level curves of f, constraint g = 0 (black), SQP path; drag the start" : "Level curves of φρ, constraint g = 0 (black), minimizers x*ρ", { aspect: "16 / 11", equal: true });
         const pre = UI.select({ label: "Examples", options: Object.entries(CON).map(([k, p]) => [k, p.name]) }, v => load(v));
@@ -1333,13 +1368,9 @@ const PAGE = {"title": "Optimization", "sub": "Heath Chapter 6 \u00b7 CSc 302 me
     };
   }
 
-  const explorerLink = {
+  const explorerLink = {   // shows the course's Optimizer Explorer inside the tab
     id: "unconstrained", title: "Steepest descent, Newton, CG, BFGS, Nelder–Mead",
-    ref: "Heath §6.5 · Examples 6.11–6.14",
-    desc: `<p>2-D unconstrained optimization (steepest descent, Newton, Nelder–Mead, conjugate gradient, BFGS) is covered by the course's
-      <b>Optimizer Explorer</b>: pick a test function, click a starting point and compare the methods' paths and convergence side by side.</p>
-      <p><a href="optimizer_explorer.html">Open the Optimizer Explorer</a></p>`,
-    init(ctx) { ctx.plots.parentElement.querySelector(".plots").remove(); ctx.add(el("p", { class: "sub" }, "This tab only links to the existing tool.")); return () => {}; },
+    ref: "Optimizer Explorer · Heath §6.5", embed: "optimizer_explorer.html",
   };
 
   UI.page(Object.assign({}, PAGE, { modules: [oneD("golden"), oneD("spi"), oneD("newton"), springs, explorerLink, nlsModule(false), nlsModule(true), conModule(false), conModule(true)] }));

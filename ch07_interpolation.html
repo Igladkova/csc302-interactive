@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 CSc 302 meetings 24\u201325 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 7 modules not covered by the Interpolation Playground: basis functions, Chebyshev polynomials,
    Bernstein polynomials, Taylor polynomials, Newton interpolation (incremental), error bounds, B-splines. Heath §7.1-7.4. */
 (() => {
@@ -1065,7 +1100,7 @@ const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 CSc 302 m
   /* ---------- basis functions: one polynomial in four bases ---------- */
   const sumBasis = {
     id: "basis-functions", title: "Basis functions",
-    ref: "Heath §7.3.1–7.3.4 · Examples 7.1–7.3",
+    ref: "Heath §7.3.1–7.3.4",
     desc: `<p>A polynomial p of degree n can be written in any basis of the polynomials of degree ≤ n. Press Next to add one more basis function (times its coefficient) to the partial sum.
       In the <b>monomial</b> basis the partial sums are Taylor polynomials at 0; in the <b>Lagrange</b> basis (equally spaced nodes on [−1, 1]) each term matches p at one node and is 0 at the others;
       in the <b>Newton</b> basis the k-th partial sum interpolates p at the first k+1 nodes; in the <b>Chebyshev</b> basis the partial sums are nearly the best approximations of their degree, so they get close fastest.</p>`,
@@ -1109,7 +1144,7 @@ const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 CSc 302 m
     desc: `<p>T<sub>k</sub>(x) = cos(k arccos x): on [−1, 1] it oscillates between −1 and 1, reaching ±1 at k+1 points and crossing zero at k points.
       Equivalently, T<sub>k</sub>(cos θ) = cos kθ, so the zeros are the projections onto the x-axis of k equally spaced points on the upper half circle (lower plot) —
       they cluster near ±1, which is exactly what is needed to tame Runge's phenomenon. The three-term recurrence T<sub>k+1</sub> = 2xT<sub>k</sub> − T<sub>k−1</sub> generates them.</p>`,
-    tries: ["k = 1, 2, 3 by hand from the recurrence, then compare.", "Watch the zeros crowd toward the ends as k grows.", "Among monic polynomials of degree k, 2^(1−k)T_k has the smallest maximum on [−1, 1]: compare its maximum with that of the monic polynomial with equally spaced roots."],
+    tries: ["k = 1, 2, 3 by hand from the recurrence, then compare.", "Watch the zeros crowd toward the ends as k grows.", "Among monic polynomials of degree k, 2¹⁻ᵏTₖ has the smallest maximum on [−1, 1]: compare its maximum with that of the monic polynomial with equally spaced roots."],
     init(ctx) {
       const plot = ctx.plot("Tₖ(x), zeros (red) and extrema", { aspect: "16 / 8" }), circ = ctx.plot("Zeros as projections of equally spaced points on the half circle", { aspect: "16 / 7", equal: true });
       const k = UI.slider({ label: "Degree k", min: 0, max: 20, step: 1, value: 5, fmt: v => v }, () => ctx.redraw());
@@ -1127,7 +1162,7 @@ const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 CSc 302 m
         zeros.forEach((z, i) => { const th = (2 * i + 1) * Math.PI / (2 * K), y = Math.sin(th); circ.seg(0, 0, z, y, { color: "--grid", width: 1 }).seg(z, y, z, 0, { color: "--err", width: 1, dash: [3, 3] }).pts([z], [y], { color: "--c1", r: 3.5 }); });
         circ.pts(zeros, zeros.map(() => 0), { color: "--err", r: 4 }).hline(0, { color: "--muted", width: 1 }).end();
         const eq = [...Array(K).keys()].map(i => K > 1 ? -1 + 2 * i / (K - 1) : 0); let me = 0, mc = 0; for (let i = 0; i <= 400; i++) { const x = -1 + i / 200; me = Math.max(me, Math.abs(eq.reduce((s, t) => s * (x - t), 1))); mc = Math.max(mc, Math.abs(zeros.reduce((s, t) => s * (x - t), 1))); }
-        out.textContent = `zeros: ${zeros.map(z => fmt(z, 4)).join(", ")}\nmax |Π(x − xᵢ)| on [−1, 1]:\n  Chebyshev zeros     ${fmt(mc, 4)}  (= 2^(1−k) = ${fmt(K ? 2 ** (1 - K) : 1, 4)})\n  equally spaced roots ${fmt(me, 4)}`;
+        out.textContent = `zeros: ${zeros.map(z => fmt(z, 4)).join(", ")}\nmax |Π(x − xᵢ)| on [−1, 1]:\n  Chebyshev zeros     ${fmt(mc, 4)}  (= 2¹⁻ᵏ = ${fmt(K ? 2 ** (1 - K) : 1, 4)})\n  equally spaced roots ${fmt(me, 4)}`;
       };
     },
   };
@@ -1194,7 +1229,7 @@ const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 CSc 302 m
   /* ---------- Newton interpolation, adding one point at a time ---------- */
   const newtonInterp = {
     id: "newton-interpolation", title: "Newton interpolation",
-    ref: "Heath §7.3.3 · Examples 7.3–7.5",
+    ref: "Heath §7.3.3",
     desc: `<p>In the Newton form p(t) = c₀ + c₁(t − t₁) + c₂(t − t₁)(t − t₂) + …, adding a data point adds one term and leaves the earlier coefficients unchanged:
       the new coefficient is the next divided difference. Click to add points (drag to move, shift-click to delete). The dashed curve is the previous interpolant, the thin colored curve the new term,
       and the table shows the divided differences with the coefficients on its top edge.</p>`,
@@ -1291,13 +1326,9 @@ const PAGE = {"title": "Interpolation", "sub": "Heath Chapter 7 \u00b7 CSc 302 m
     },
   };
 
-  const playgroundLink = {
+  const playgroundLink = {   // shows the course's Interpolation Playground inside the tab
     id: "playground", title: "Polynomial bases, convergence, piecewise cubic, polynomial vs spline",
-    ref: "Heath §7.3–7.4",
-    desc: `<p>Polynomial bases, convergence (Runge's phenomenon), piecewise cubic interpolation and polynomial vs spline interpolation are covered by the course's
-      <b>Interpolation Playground</b>: drag data points and compare polynomial, piecewise linear, cubic spline (natural / not-a-knot) and monotone cubic (PCHIP) interpolants, or sample a function at equally spaced or Chebyshev nodes.</p>
-      <p><a href="interpolation_playground.html">Open the Interpolation Playground</a></p>`,
-    init(ctx) { ctx.plots.remove(); ctx.add(el("p", { class: "sub" }, "This tab only links to the existing tool.")); return () => {}; },
+    ref: "Interpolation Playground · Heath §7.3–7.4", embed: "interpolation_playground.html",
   };
 
   UI.page(Object.assign({}, PAGE, { modules: [sumBasis, newtonInterp, cheb, taylor, errBound, bern, bspline, playgroundLink] }));

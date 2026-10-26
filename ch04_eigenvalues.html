@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Eigenvalue Problems", "sub": "Heath Chapter 4 \u00b7 CSc 302 meetings 13\u201314 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Eigenvalue Problems", "sub": "Heath Chapter 4 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {"power-inverse": [{"title": "Demo 1: Power and inverse iteration", "page": "ch04_eigenvalues", "tab": "power-inverse", "howto": "Open this tab next to the video. The video shows how to use the controls, explains power, inverse and Rayleigh quotient iteration, and then runs six experiments in the demo with what you should see. Pause it to try each one yourself.", "duration": 377, "slides": "ch04_demo1_power_inverse.pdf", "first_slide": 1, "last_slide": 12, "deck": "ch04_eigenvalues/demo1_power_inverse", "file": "ch04_demo1_power_inverse_iteration.mp4"}], "qr-iteration": [{"title": "Demo 2: QR iteration with shifts", "page": "ch04_eigenvalues", "tab": "qr-iteration", "howto": "Open this tab next to the video. The video shows how to use the controls, explains QR iteration and its shifts, and then runs experiments with and without shifts in the demo. Pause it to try each one yourself.", "duration": 355, "slides": "ch04_demo2_qr_iteration.pdf", "first_slide": 1, "last_slide": 12, "deck": "ch04_eigenvalues/demo2_qr_iteration", "file": "ch04_demo2_qr_iteration_shifts.mp4"}]}};
 /* Chapter 4 modules: power / inverse / shifted inverse / Rayleigh quotient iteration, QR iteration with shifts,
    Hessenberg reduction, Jacobi's method. Heath §4.5. (Gershgorin's theorem is left out, as in the course slides.) */
 (() => {
@@ -1069,17 +1104,17 @@ const PAGE = {"title": "Eigenvalue Problems", "sub": "Heath Chapter 4 \u00b7 CSc
 
   const power = {
     id: "power-inverse", title: "Power and inverse iteration",
-    ref: "Heath §4.5.1–4.5.3 · Algorithms 4.2–4.4 · Examples 4.10–4.14",
+    ref: "Heath §4.5.1–4.5.3 · Algorithms 4.2–4.4",
     desc: `<p><b>Power iteration</b> multiplies by A and normalizes: the component along the dominant eigenvector grows fastest, so xₖ turns toward it and the error shrinks like |λ₂/λ₁|ᵏ.
       <b>Inverse iteration</b> solves (A − σI)yₖ = xₖ instead, which is power iteration with (A − σI)⁻¹: it finds the eigenvalue closest to the shift σ, at the rate |λ<sub>closest</sub> − σ| / |λ<sub>next</sub> − σ|.
       <b>Rayleigh quotient iteration</b> updates the shift to σₖ = xₖᵀAxₖ / xₖᵀxₖ at every step and converges cubically for symmetric matrices.
       For a 2 × 2 matrix the top plot shows the iterates as unit vectors (drag the start vector) and the eigenvector directions dashed.</p>`,
-    tries: ["Heath's matrix [3 1; 1 3] (Example 4.10) from x₀ = (0, 1): ratio |λ₂/λ₁| = 1/2, one bit per step.", "[2 1; 1 2] from (1, 0): rate 1/3.",
+    tries: ["[3 1; 1 3] from x₀ = (0, 1): ratio |λ₂/λ₁| = 1/2, one bit per step.", "[2 1; 1 2] from (1, 0): rate 1/3.",
       "Inverse iteration with σ = 0 finds the smallest eigenvalue; move σ next to an eigenvalue and watch the rate jump.", "Rayleigh quotient iteration: count the steps to 1e−15.",
       "Make λ₁ and λ₂ nearly equal in magnitude (e.g. [1 0.1; 0.1 −0.95]): power iteration crawls."],
     init(ctx) {
       const geo = ctx.plot("Iterates xₖ (2 × 2 only; drag the start vector)", { aspect: "16 / 9", equal: true }), conv = ctx.plot("Error in the eigenvalue estimate", { aspect: "16 / 8", logy: true });
-      const ex = [{ name: "Heath Example 4.10: [3 1; 1 3]", A: [[3, 1], [1, 3]], x0: [0, 1] }, { name: "[2 1; 1 2]", A: [[2, 1], [1, 2]], x0: [1, 0] }, { name: "nonsymmetric [2 1; 0.5 1]", A: [[2, 1], [0.5, 1]], x0: [0.2, 1] },
+      const ex = [{ name: "[3 1; 1 3]", A: [[3, 1], [1, 3]], x0: [0, 1] }, { name: "[2 1; 1 2]", A: [[2, 1], [1, 2]], x0: [1, 0] }, { name: "nonsymmetric [2 1; 0.5 1]", A: [[2, 1], [0.5, 1]], x0: [0.2, 1] },
         { name: "close eigenvalues [1 0.1; 0.1 −0.95]", A: [[1, 0.1], [0.1, -0.95]], x0: [0.3, 1] }, { name: "3 × 3 [4 1 0; 1 3 1; 0 1 2]", A: [[4, 1, 0], [1, 3, 1], [0, 1, 2]], x0: [1, 1, 1] }];
       const A = UI.matrix({ label: "A", rows: 2, cols: 2, value: ex[0].A }, () => restart());
       const n = sizeSelect(A, () => { x0 = Array(+n.value).fill(1); restart(); }, "2", [2, 3, 4]);
@@ -1127,15 +1162,15 @@ const PAGE = {"title": "Eigenvalue Problems", "sub": "Heath Chapter 4 \u00b7 CSc
 
   const qrIter = {
     id: "qr-iteration", title: "QR iteration with shifts",
-    ref: "Heath §4.5.6 · Algorithms 4.7–4.8 · Examples 4.15–4.16",
+    ref: "Heath §4.5.6 · Algorithms 4.7–4.8",
     desc: `<p>QR iteration factors Aₖ − σₖI = QₖRₖ and sets Aₖ₊₁ = RₖQₖ + σₖI. Each step is a similarity transformation (Aₖ₊₁ = QₖᵀAₖQₖ), so the eigenvalues never change,
       while the subdiagonal entries shrink and the diagonal approaches the eigenvalues. Without shifts entry (i+1, i) decays like |λᵢ₊₁/λᵢ|ᵏ; with the shift σₖ = a<sub>nn</sub> (Rayleigh quotient)
       or the Wilkinson shift the last row converges quadratically or faster, after which that eigenvalue can be deflated.</p>`,
-    tries: ["Heath Example 4.15 (eigenvalues 4, 3, 2, 1) without shifts: read the decay rates of the three curves (3/4, 2/3, 1/2).", "Same matrix with the Rayleigh shift (Example 4.16): the last entry drops to roundoff in a few steps.",
+    tries: ["The 4 × 4 matrix with eigenvalues 4, 3, 2, 1, without shifts: read the decay rates of the three curves (3/4, 2/3, 1/2).", "Same matrix with the Rayleigh shift: the last entry drops to roundoff in a few steps.",
       "A nonsymmetric matrix with complex eigenvalues: a 2 × 2 block remains on the diagonal."],
     init(ctx) {
       const cv = ctx.canvas("Aₖ (subdiagonal outlined)"), plot = ctx.plot("|subdiagonal entries| versus iteration", { aspect: "16 / 8", logy: true });
-      const ex = [{ name: "Heath Example 4.15 (λ = 4, 3, 2, 1)", A: H15 }, { name: "3 × 3 symmetric", A: [[4, 1, 0], [1, 3, 1], [0, 1, 2]] }, { name: "complex pair [0 −1 0; 1 0 0; 0 0 2] + coupling", A: [[0, -1, 0.5], [1, 0, 0.2], [0, 0.3, 2]] }];
+      const ex = [{ name: "4 × 4 with λ = 4, 3, 2, 1", A: H15 }, { name: "3 × 3 symmetric", A: [[4, 1, 0], [1, 3, 1], [0, 1, 2]] }, { name: "complex pair [0 −1 0; 1 0 0; 0 0 2] + coupling", A: [[0, -1, 0.5], [1, 0, 0.2], [0, 0.3, 2]] }];
       const A = UI.matrix({ label: "A", rows: 4, cols: 4, value: H15 }, () => restart());
       const n = sizeSelect(A, () => restart(), "4");
       const shift = UI.select({ label: "Shift", options: [["none", "no shift"], ["rq", "Rayleigh quotient σ = a_nn"], ["wilk", "Wilkinson shift"]] }, () => restart());
@@ -1190,14 +1225,14 @@ const PAGE = {"title": "Eigenvalue Problems", "sub": "Heath Chapter 4 \u00b7 CSc
 
   const jacobi = {
     id: "jacobi", title: "Jacobi's method",
-    ref: "Heath §4.5.8 · Examples 4.18–4.19",
+    ref: "Heath §4.5.8",
     desc: `<p>For a symmetric matrix, a plane rotation J in rows and columns p, q chosen so that (JᵀAJ)<sub>pq</sub> = 0 annihilates one symmetric pair of off-diagonal entries.
       Later rotations may make it nonzero again, but the off-diagonal norm off(A) = (Σ<sub>i≠j</sub> a<sub>ij</sub>²)<sup>½</sup> decreases at every step, and after a few sweeps it is at roundoff level:
       the diagonal holds the eigenvalues and the product of the rotations the eigenvectors. The convergence is eventually quadratic.</p>`,
-    tries: ["Heath Example 4.19 with the cyclic order: compare the first rotation with the book.", "Switch to 'largest entry' (classical Jacobi): fewer rotations, but each needs a search.", "Count sweeps until off(A) < 1e−15 for the 4 × 4 example."],
+    tries: ["[1 0 2; 0 2 1; 2 1 1] with the cyclic order: work out the first rotation by hand and compare.", "Switch to 'largest entry' (classical Jacobi): fewer rotations, but each needs a search.", "Count sweeps until off(A) < 1e−15 for the 4 × 4 example."],
     init(ctx) {
       const cv = ctx.canvas("A after each rotation (annihilated pair outlined)"), plot = ctx.plot("off(A) versus rotation", { aspect: "16 / 7", logy: true });
-      const ex = [{ name: "Heath Example 4.19", A: [[1, 0, 2], [0, 2, 1], [2, 1, 1]] }, { name: "Heath Example 4.15 matrix", A: H15 }, { name: "3 × 3 [4 1 0; 1 3 1; 0 1 2]", A: [[4, 1, 0], [1, 3, 1], [0, 1, 2]] }];
+      const ex = [{ name: "[1 0 2; 0 2 1; 2 1 1]", A: [[1, 0, 2], [0, 2, 1], [2, 1, 1]] }, { name: "4 × 4 with λ = 4, 3, 2, 1", A: H15 }, { name: "3 × 3 [4 1 0; 1 3 1; 0 1 2]", A: [[4, 1, 0], [1, 3, 1], [0, 1, 2]] }];
       const A = UI.matrix({ label: "A (symmetric: the upper triangle is used)", rows: 3, cols: 3, value: ex[0].A }, () => restart());
       const n = sizeSelect(A, () => restart(), "3", [2, 3, 4, 5]);
       const order = UI.select({ label: "Pivot order", options: [["cyclic", "cyclic by rows (skip zero entries)"], ["max", "largest off-diagonal entry"]] }, () => restart());

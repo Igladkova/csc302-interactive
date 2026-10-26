@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px }
 .card h2 a { color: var(--ink); text-decoration: none }
 .card h2 a:hover { text-decoration: underline }
@@ -128,7 +141,7 @@ header.infohead .nav { margin: 0 }
 <section class="panel card"><div class="num">Heath §8.4.3–8.4.4 · Stewart §15.1, 15.3, 15.4, 15.9 · meeting 27</div><h2><a href="unit27_double-integrals.html">Double integrals, change of variables, product rules and Monte Carlo</a></h2><p>Fubini, mass, center of mass and probability, polar coordinates and the Jacobian, tensor-product rules, the curse of dimensionality, Monte Carlo and σ/√N; what math it needs.</p></section>
 <section class="panel card"><div class="num">Heath §8.6–8.7 · meeting 28</div><h2><a href="unit28_differentiation.html">Numerical differentiation, Richardson extrapolation, automatic differentiation; course review</a></h2><p>Ill conditioning of differentiation, finite differences and the optimal h, Richardson and Romberg, forward-mode AD, and the course&#x27;s error themes; what math it needs.</p></section>
 </div>
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>

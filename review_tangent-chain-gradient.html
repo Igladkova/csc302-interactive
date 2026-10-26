@@ -80,6 +80,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .wrap > * { min-width: 0 }
 .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; min-width: 0 }
 .box > h2 { font-size: 1.15rem; margin: 0 0 10px }
@@ -106,7 +119,7 @@ header.infohead .nav { margin: 0 }
 </head>
 <body>
 <div class="wrap">
-<header class="infohead"><div><h1>Review: tangent planes, the chain rule and the gradient</h1><p class="sub">Review · Stewart §14.4–14.6 · CSc 302 meetings 6–7</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
+<header class="infohead"><div><h1>Review: tangent planes, the chain rule and the gradient</h1><p class="sub">Review · Stewart §14.4–14.6</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
 
 <section class="box">
 <h2>Learning objectives</h2>
@@ -117,7 +130,7 @@ header.infohead .nav { margin: 0 }
   <li>Compute directional derivatives and the gradient, and use the gradient's direction and length.</li>
   <li>Find tangent planes to level surfaces using the gradient as a normal vector.</li>
 </ul>
-<p class="note">This page summarizes Stewart §14.4–14.6, the material of CSc 302 meetings 6–7. Use it as a review before those meetings or before Quiz 2.</p>
+<p class="note">This page summarizes Stewart §14.4–14.6.</p>
 </section>
 
 <section class="box">
@@ -201,10 +214,10 @@ The right side, \(L(x, y)\), is the <b>linearization</b> of \(f\) at \((a, b)\),
 <section class="box">
 <h2>4. Why CSc 302 needs this</h2>
 <ul>
-  <li><b>Linearization</b> is the idea behind Newton's method for systems: replace each equation by its tangent plane and solve the linear system \(J\,\mathbf s = -\mathbf F\) (meeting 19).</li>
-  <li><b>Differentials</b> are error propagation: the same computation gives the condition number of an arithmetic operation (meetings 2 and 6).</li>
-  <li><b>The Jacobian</b> and the matrix chain rule appear in Newton's and Broyden's methods, nonlinear least squares and change of variables in double integrals (meetings 19, 27).</li>
-  <li><b>The gradient</b> gives the steepest-descent direction, and \(\nabla f = 0\) is the first-order optimality condition (meetings 20–22). Parallel gradients, \(\nabla f = \lambda \nabla g\), are the Lagrange condition (meeting 23).</li>
+  <li><b>Linearization</b> is the idea behind Newton's method for systems: replace each equation by its tangent plane and solve the linear system \(J\,\mathbf s = -\mathbf F\).</li>
+  <li><b>Differentials</b> are error propagation: the same computation gives the condition number of an arithmetic operation.</li>
+  <li><b>The Jacobian</b> and the matrix chain rule appear in Newton's and Broyden's methods, nonlinear least squares and change of variables in double integrals.</li>
+  <li><b>The gradient</b> gives the steepest-descent direction, and \(\nabla f = 0\) is the first-order optimality condition. Parallel gradients, \(\nabla f = \lambda \nabla g\), are the Lagrange condition.</li>
 </ul>
 <p class="note">Try it: <a href="mv_several-variables.html#tangent-plane">Tangent plane and linear approximation</a> and <a href="mv_several-variables.html#gradient">Gradient and directional derivatives</a> in the interactive modules. See also <a href="review_several-variables.html">Stewart §14.1–14.3</a> and the <a href="review_taylor.html">Taylor series review</a>.</p>
 </section>
@@ -223,7 +236,7 @@ The right side, \(L(x, y)\), is the <b>linearization</b> of \(f\) at \((a, b)\),
 </ol>
 </section>
 
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>

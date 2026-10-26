@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,7 +1089,7 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CSc 302 meetings 11\u201312 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 3 modules: data fitting, Gram-Schmidt geometry, Householder reflections, Householder / Givens /
    Gram-Schmidt / column-pivoting QR, the SVD of a 2x2 matrix, and low-rank image approximation. Heath §3.1-3.6. */
 (() => {
@@ -1070,7 +1105,7 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
 
   const dataFit = {
     id: "data-fitting", title: "Data fitting",
-    ref: "Heath §3.1–3.4 · Examples 3.2, 3.6 (condition squaring)",
+    ref: "Heath §3.1–3.4",
     desc: `<p>Least squares chooses the coefficients x that minimize the sum of squared vertical distances (the red residuals) between the data and the model
       f(t) = x₁φ₁(t) + … + xₙφₙ(t). Click to add points, drag to move them, shift-click to delete. With as many basis functions as points the fit interpolates;
       with high-degree monomials the columns of A become nearly dependent, cond(A) grows, and forming AᵀA squares it — which is why QR is preferred to the normal equations.</p>`,
@@ -1143,7 +1178,7 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
 
   const householder = {
     id: "householder", title: "Householder transformations",
-    ref: "Heath §3.5.1 · Example 3.7",
+    ref: "Heath §3.5.1",
     desc: `<p>A Householder transformation H = I − 2vvᵀ/(vᵀv) reflects every vector across the line (hyperplane) orthogonal to v. Choosing v = a − αe₁ with α = −sign(a₁)‖a‖
       maps a onto the axis: Ha = αe₁, zeroing every entry but the first — one column of a QR factorization. Drag a (black) and a test vector y (green) to see the reflection.
       The sign choice avoids cancellation in a₁ − α when a is already close to the axis.</p>`,
@@ -1174,7 +1209,7 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
   /** Shared stepper for the QR factorizations. kind: 'house' | 'givens' | 'cgs' | 'mgs'. */
   function qrModule(kind) {
     const titles = { house: "Householder QR", givens: "Givens QR" };
-    const refs = { house: "Heath §3.5.1 · Algorithm 3.1 · Example 3.8 (surveyor data, Example 3.1)", givens: "Heath §3.5.2 · Examples 3.9–3.10" };
+    const refs = { house: "Heath §3.5.1 · Algorithm 3.1", givens: "Heath §3.5.2" };
     const descs = {
       house: `<p>Each step applies one reflection Hₖ that zeros column k below the diagonal (outlined). After n steps Hₙ⋯H₁A = [R; 0], so A = QR with Q = H₁⋯Hₙ.
         The same reflections applied to b give Qᵀb = [c₁; c₂]; the least squares solution solves Rx = c₁ and the residual norm is ‖c₂‖.</p>`,
@@ -1184,10 +1219,10 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
     };
     return {
       id: kind === "house" ? "householder-qr" : "givens-qr", title: titles[kind], ref: refs[kind], desc: descs[kind],
-      tries: ["Load the surveyor problem (Heath Example 3.1): the solution is about (1236, 1943, 2416) and ‖r‖₂² = 35.", "Count the steps for a 6 × 3 matrix: " + (kind === "house" ? "3 reflections." : "one rotation per subdiagonal nonzero."), "Edit an entry and watch which entries change at each step."],
+      tries: ["Load the surveyor problem: the solution is about (1236, 1943, 2416) and ‖r‖₂² = 35.", "Count the steps for a 6 × 3 matrix: " + (kind === "house" ? "3 reflections." : "one rotation per subdiagonal nonzero."), "Edit an entry and watch which entries change at each step."],
       init(ctx) {
         const cv = ctx.canvas(kind === "house" ? "QᵀA and Qᵀb after each reflection" : "QᵀA and Qᵀb after each rotation");
-        const ex = [{ name: "surveyor heights (Heath Example 3.1)", A: SURVEY.A, b: SURVEY.b }, { name: "line fit to 4 points", A: [[1, 0], [1, 1], [1, 2], [1, 3]], b: [1, 2, 2, 4] }, { name: "4 × 3 random", A: [[2, -1, 0], [1, 3, 1], [0, 1, 2], [1, 0, -1]], b: [1, 2, 3, 4] }];
+        const ex = [{ name: "surveyor heights", A: SURVEY.A, b: SURVEY.b }, { name: "line fit to 4 points", A: [[1, 0], [1, 1], [1, 2], [1, 3]], b: [1, 2, 2, 4] }, { name: "4 × 3 random", A: [[2, -1, 0], [1, 3, 1], [0, 1, 2], [1, 0, -1]], b: [1, 2, 3, 4] }];
         const A = UI.matrix({ label: "A", rows: 6, cols: 3, value: SURVEY.A }, () => restart()), b = UI.matrix({ label: "b", rows: 6, cols: 1, value: SURVEY.b.map(v => [v]) }, () => restart());
         let steps = [], at = 0, M0, b0;
         function restart() {
@@ -1218,14 +1253,14 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
 
   const gsQR = {
     id: "gram-schmidt-qr", title: "Gram–Schmidt QR (classical vs modified)",
-    ref: "Heath §3.5.3 · Algorithms 3.2–3.3 · Example 3.11",
+    ref: "Heath §3.5.3 · Algorithms 3.2–3.3",
     desc: `<p>Classical Gram–Schmidt computes all projections of aₖ onto q₁ … qₖ₋₁ from the <i>original</i> aₖ; modified Gram–Schmidt subtracts each projection as soon as qⱼ is known,
       so later projections use the updated vectors. In exact arithmetic they are identical. In floating point the computed Q loses orthogonality roughly like ε·cond(A)² for classical,
       ε·cond(A) for modified, and stays at the ε level for Householder — the plot measures ‖I − QᵀQ‖ for matrices of increasing condition number.</p>`,
     tries: ["Step through the surveyor matrix with both variants: same R.", "Read the plot: at cond(A) = 10⁸ classical GS has lost all orthogonality, modified about half the digits."],
     init(ctx) {
       const cv = ctx.canvas("Q (columns done so far) and R"), plot = ctx.plot("Loss of orthogonality ‖I − QᵀQ‖ versus cond(A)", { aspect: "16 / 9", logx: true, logy: true });
-      const ex = [{ name: "surveyor heights (Heath Example 3.1)", A: SURVEY.A }, { name: "nearly dependent columns", A: [[1, 1, 1], [1e-4, 0, 0], [0, 1e-4, 0], [0, 0, 1e-4]] }];
+      const ex = [{ name: "surveyor heights", A: SURVEY.A }, { name: "nearly dependent columns", A: [[1, 1, 1], [1e-4, 0, 0], [0, 1e-4, 0], [0, 0, 1e-4]] }];
       const A = UI.matrix({ label: "A", rows: 6, cols: 3, value: SURVEY.A }, () => restart());
       const meth = UI.select({ label: "Variant", options: [["cgs", "classical Gram–Schmidt"], ["mgs", "modified Gram–Schmidt"]] }, () => restart());
       let res, at = 0;
@@ -1259,13 +1294,13 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
 
   const pivotQR = {
     id: "pivoting-qr", title: "QR with column pivoting",
-    ref: "Heath §3.5.4 · Examples 3.12–3.14",
+    ref: "Heath §3.5.4",
     desc: `<p>For a rank-deficient (or nearly rank-deficient) matrix, Householder QR with column pivoting moves the remaining column of largest norm to the front at each step.
       The diagonal of R then decreases, |r₁₁| ≥ |r₂₂| ≥ …, and the numerical rank is the number of diagonal entries above a tolerance. The chosen column order gives a basic solution.</p>`,
-    tries: ["Load the relative-heights matrix (Heath Example 3.12): r₃₃ ≈ 0, so the rank is 2.", "Make a column a combination of the others plus a tiny perturbation and change the tolerance."],
+    tries: ["Load the relative-heights matrix: r₃₃ ≈ 0, so the rank is 2.", "Make a column a combination of the others plus a tiny perturbation and change the tolerance."],
     init(ctx) {
       const cv = ctx.canvas("R after each step (column order on top)"), plot = ctx.plot("|rₖₖ| on a log scale", { aspect: "16 / 6", logy: true });
-      const ex = [{ name: "relative heights only (Heath Example 3.12)", A: [[-1, 1, 0], [-1, 0, 1], [0, -1, 1]] }, { name: "nearly dependent (4 × 3)", A: [[1, 2, 3], [2, 1, 3.0001], [1, 1, 2], [0, 1, 1]] }, { name: "full rank surveyor", A: SURVEY.A }];
+      const ex = [{ name: "relative heights only", A: [[-1, 1, 0], [-1, 0, 1], [0, -1, 1]] }, { name: "nearly dependent (4 × 3)", A: [[1, 2, 3], [2, 1, 3.0001], [1, 1, 2], [0, 1, 1]] }, { name: "full rank surveyor", A: SURVEY.A }];
       const A = UI.matrix({ label: "A", rows: 3, cols: 3, value: ex[0].A }, () => restart());
       const tol = UI.slider({ label: "Rank tolerance (relative to |r₁₁|)", min: 1e-14, max: 1e-1, log: true, value: 1e-8, fmt: v => fmt(v, 1) }, () => ctx.redraw());
       let res, at = 0;
@@ -1290,7 +1325,7 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
 
   const svd2 = {
     id: "svd", title: "Singular value decomposition",
-    ref: "Heath §3.6 · Examples 3.15–3.18; §4.7",
+    ref: "Heath §3.6; §4.7",
     desc: `<p>Every matrix factors as A = UΣVᵀ. For a 2 × 2 matrix this reads as three moves applied to the unit circle: Vᵀ rotates (or reflects) it,
       Σ stretches the axes by σ₁ ≥ σ₂ ≥ 0, and U rotates the resulting ellipse into place. Slide t from 0 to 3 to watch the stages. The right singular vectors vᵢ (left) map to σᵢuᵢ (right).</p>`,
     tries: ["Set t = 1: after Vᵀ the vectors v₁, v₂ lie on the axes.", "Make A singular (det = 0): σ₂ = 0 and the circle collapses to a segment.", "For a symmetric positive definite A, U = V and the σᵢ are the eigenvalues."],
@@ -1325,7 +1360,7 @@ const PAGE = {"title": "Linear Least Squares", "sub": "Heath Chapter 3 \u00b7 CS
 
   const lowRank = {
     id: "low-rank", title: "Lower-rank approximation (images)",
-    ref: "Heath §3.6.1 (lower-rank approximation) · Example 3.20",
+    ref: "Heath §3.6.1 (lower-rank approximation)",
     desc: `<p>Write A = Σ σᵢuᵢvᵢᵀ and keep only the first k terms: A<sub>k</sub> is the best rank-k approximation, with error ‖A − A<sub>k</sub>‖₂ = σ<sub>k+1</sub>.
       A grayscale image is a matrix of pixel values; because its singular values decay fast, a small k already looks right and needs only k(m + n + 1) numbers instead of mn.
       You can load your own picture (it stays in your browser).</p>`,

@@ -88,7 +88,7 @@ footer { font-size: 0.8rem; color: var(--muted) }
   <header>
     <div>
       <h1>Optimizer Explorer</h1>
-      <p class="sub">CSc 302 · Optimization · Heath §6.4–6.5 · click the map to choose a starting point</p>
+      <p class="sub">Click the map to choose a starting point</p>
     </div>
     <p class="sub mono" id="status">ready</p>
   </header>
@@ -175,8 +175,6 @@ footer { font-size: 0.8rem; color: var(--muted) }
       <li><b>Bumpy bowl.</b> Its Hessian is singular at the minimum. Why do Newton and BFGS lose their fast convergence here?</li>
     </ol>
   </div>
-
-  <footer>Same algorithms as the Chapter 6 slides and demo notebooks (Heath Algorithms 6.3–6.6). Inspired by Ben Frederickson's interactive tutorial on numerical optimization (benfrederickson.com/numerical-optimization). Line searches use golden-section search (Meeting 23); f* = 0 for every function here.</footer>
 </div>
 
 <script>
@@ -184,7 +182,7 @@ footer { font-size: 0.8rem; color: var(--muted) }
 // ---------------------------------------------------------------- objective functions (analytic gradient and Hessian)
 const FUNCS = {
   quadratic: {
-    label: "Quadratic 0.5x² + 0.5κy² (Heath Example 6.11)", view: [-6, 6, -6, 6], start: [5, 1], mins: [[0, 0]],
+    label: "Quadratic 0.5x² + 0.5κy²", view: [-6, 6, -6, 6], start: [5, 1], mins: [[0, 0]],
     f: (x, y, k) => 0.5 * x * x + 0.5 * k * y * y,
     g: (x, y, k) => [x, k * y], H: (x, y, k) => [[1, 0], [0, k]],
     alpha: 0.1, formula: k => `f(x, y) = 0.5x² + ${(0.5 * k).toPrecision(3)}y²,  H = diag(1, ${k.toPrecision(3)}),  2/λmax = ${(2 / Math.max(1, k)).toPrecision(3)}`,

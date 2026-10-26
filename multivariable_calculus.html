@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px }
 .card h2 a { color: var(--ink); text-decoration: none }
 .card h2 a:hover { text-decoration: underline }
@@ -98,26 +111,25 @@ header.infohead .nav { margin: 0 }
 </head>
 <body>
 <div class="wrap">
-<header class="infohead"><div><h1>Multivariable Calculus</h1><p class="sub">CSc 302 · review pages for the Stewart sections in the meeting plan · CCNY</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
+<header class="infohead"><div><h1>Multivariable Calculus</h1><p class="sub">Review pages for selected topics with reference to Stewart book sections</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
 <div class="intro">
-<p>CSc 302 teaches the calculus of several variables where the numerical methods need it. Each page below summarizes the Stewart sections for a group of meetings,
-with learning objectives, key results, a figure, worked examples (answers hidden until you open them) and review questions. The first page reviews Taylor series from Calculus II, used from meeting 1.</p>
+<p>Each page below summarizes relevant Multivariable Calculus topics, with learning objectives, key results, a figure, worked examples (answers hidden until you open them) and review questions.</p>
 </div>
 <h2 class="sec">Review pages</h2>
 <div class="cards">
-<section class="panel card"><div class="num">Stewart §11.10–11.11 · meeting 1 (prerequisite)</div><h2><a href="review_taylor.html">Taylor series and Taylor polynomials</a></h2><p>Taylor coefficients, standard series, remainder bounds, error scaling O(hⁿ⁺¹).</p></section>
-<section class="panel card"><div class="num">Stewart §14.1–14.3 · meetings 4–5</div><h2><a href="review_several-variables.html">Functions of several variables and partial derivatives</a></h2><p>Domains, level curves, limits along paths, partial derivatives, Clairaut.</p></section>
-<section class="panel card"><div class="num">Stewart §14.4–14.6 · meetings 6–7</div><h2><a href="review_tangent-chain-gradient.html">Tangent planes, the chain rule and the gradient</a></h2><p>Linearization, differentials, Jacobian chain rule, directional derivatives.</p></section>
-<section class="panel card"><div class="num">Stewart §14.7–14.8 · meetings 20, 23</div><h2><a href="review_extrema-lagrange.html">Extrema and Lagrange multipliers</a></h2><p>Critical points, Second Derivatives Test, absolute extrema, Lagrange conditions.</p></section>
-<section class="panel card"><div class="num">Stewart §10.1, §13.1–13.2 · meeting 25</div><h2><a href="review_curves.html">Parametric curves and vector functions</a></h2><p>Parametric equations, vector functions, tangent vectors, arc length.</p></section>
-<section class="panel card"><div class="num">Stewart §15.1, §15.3, §15.4, §15.9 · meeting 27</div><h2><a href="review_double-integrals.html">Double integrals and change of variables</a></h2><p>Riemann sums, Fubini, mass and probability, polar coordinates, Jacobians.</p></section>
+<section class="panel card"><div class="num">Stewart §11.10–11.11</div><h2><a href="review_taylor.html">Taylor series and Taylor polynomials</a></h2><p>Taylor coefficients, standard series, remainder bounds, error scaling O(hⁿ⁺¹).</p></section>
+<section class="panel card"><div class="num">Stewart §14.1–14.3</div><h2><a href="review_several-variables.html">Functions of several variables and partial derivatives</a></h2><p>Domains, level curves, limits along paths, partial derivatives, Clairaut.</p></section>
+<section class="panel card"><div class="num">Stewart §14.4–14.6</div><h2><a href="review_tangent-chain-gradient.html">Tangent planes, the chain rule and the gradient</a></h2><p>Linearization, differentials, Jacobian chain rule, directional derivatives.</p></section>
+<section class="panel card"><div class="num">Stewart §14.7–14.8</div><h2><a href="review_extrema-lagrange.html">Extrema and Lagrange multipliers</a></h2><p>Critical points, Second Derivatives Test, absolute extrema, Lagrange conditions.</p></section>
+<section class="panel card"><div class="num">Stewart §10.1, §13.1–13.2</div><h2><a href="review_curves.html">Parametric curves and vector functions</a></h2><p>Parametric equations, vector functions, tangent vectors, arc length.</p></section>
+<section class="panel card"><div class="num">Stewart §15.1, §15.3, §15.4, §15.9</div><h2><a href="review_double-integrals.html">Double integrals and change of variables</a></h2><p>Riemann sums, Fubini, mass and probability, polar coordinates, Jacobians.</p></section>
 <section class="panel card new"><div class="num">Interactive · Stewart Ch 14–15</div><h2><a href="mv_several-variables.html">Functions of Several Variables (interactive)</a></h2><p>Surfaces and level curves, partial derivatives, tangent planes, gradients, critical points, Lagrange multipliers, double integrals, polar coordinates: eight interactive tabs.</p></section>
 </div>
 <h2 class="sec">Additional online resources</h2>
 <section class="box"><ul>
 <li><a href="https://openstax.org/books/calculus-volume-3/pages/1-introduction" target="_blank" rel="noopener">OpenStax, Calculus Volume 3 (G. Strang, E. Herman)</a><br><span>Free online textbook (CC BY-NC-SA): parametric equations and polar coordinates, vectors, vector-valued functions, differentiation of functions of several variables, multiple integration.</span></li>
 </ul></section>
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>

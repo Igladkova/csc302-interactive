@@ -80,6 +80,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .wrap > * { min-width: 0 }
 .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; min-width: 0 }
 .box > h2 { font-size: 1.15rem; margin: 0 0 10px }
@@ -106,7 +119,7 @@ header.infohead .nav { margin: 0 }
 </head>
 <body>
 <div class="wrap">
-<header class="infohead"><div><h1>Review: extrema and Lagrange multipliers</h1><p class="sub">Review · Stewart §14.7–14.8 · CSc 302 meetings 20, 23</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
+<header class="infohead"><div><h1>Review: extrema and Lagrange multipliers</h1><p class="sub">Review · Stewart §14.7–14.8</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
 
 <section class="box">
 <h2>Learning objectives</h2>
@@ -115,7 +128,7 @@ header.infohead .nav { margin: 0 }
   <li>Find absolute extrema of a continuous function on a closed, bounded region.</li>
   <li>Use Lagrange multipliers to find extreme values subject to a constraint, and interpret the multiplier.</li>
 </ul>
-<p class="note">This page summarizes Stewart §14.7–14.8, the calculus behind CSc 302 meetings 20 and 23 (Heath Ch 6). Use it as a review before those meetings or before Quiz 5.</p>
+<p class="note">This page summarizes Stewart §14.7–14.8, the calculus behind optimization (Heath Ch 6).</p>
 </section>
 
 <section class="box">
@@ -182,9 +195,9 @@ for \(x, y, \lambda\): three equations, three unknowns (four of each for \(f(x, 
 <section class="box">
 <h2>3. Why CSc 302 needs this</h2>
 <ul>
-  <li><b>\(\nabla f = \mathbf 0\)</b> is a nonlinear system: Newton's method for it uses the Hessian as its Jacobian (meetings 19–22).</li>
-  <li><b>The Hessian test</b> is the second-order optimality condition of Heath §6.2. Its eigenvalues decide the type of a critical point, and its condition number decides how hard the minimum is for steepest descent (meetings 20–22).</li>
-  <li><b>Lagrange's conditions</b> are a nonlinear system in \((x, \lambda)\). Penalty methods and sequential quadratic programming solve it numerically (meeting 23).</li>
+  <li><b>\(\nabla f = \mathbf 0\)</b> is a nonlinear system: Newton's method for it uses the Hessian as its Jacobian.</li>
+  <li><b>The Hessian test</b> is the second-order optimality condition of Heath §6.2. Its eigenvalues decide the type of a critical point, and its condition number decides how hard the minimum is for steepest descent.</li>
+  <li><b>Lagrange's conditions</b> are a nonlinear system in \((x, \lambda)\). Penalty methods and sequential quadratic programming solve it numerically.</li>
 </ul>
 <p class="note">Try it: <a href="mv_several-variables.html#critical-points">Critical points and the Hessian</a>, <a href="mv_several-variables.html#lagrange">Lagrange multipliers</a>, and the <a href="ch06_optimization.html#penalty">penalty</a> and <a href="ch06_optimization.html#sqp">SQP</a> tabs. Earlier reviews: <a href="review_tangent-chain-gradient.html">Stewart §14.4–14.6</a>.</p>
 </section>
@@ -203,7 +216,7 @@ for \(x, y, \lambda\): three equations, three unknowns (four of each for \(f(x, 
 </ol>
 </section>
 
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>

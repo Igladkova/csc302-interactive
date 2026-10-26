@@ -78,6 +78,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 </style>
 </head>
 <body>
@@ -1005,6 +1018,21 @@ const UI = (() => {
   /** Parse an expression in vars, reporting errors on the input control. */
   UI.parseFunc = function (inp, vars) { try { const r = N.func(inp.value, vars); vars.forEach((v, i) => 0); r.f(...vars.map(() => 0.5)); inp.error(""); return r; } catch (e) { inp.error(e.message); return null; } };
 
+  /** Superscript form of a short exponent such as -3, 1−p or L−p+1 (for readouts, where <sup> is not available). */
+  UI.sup = s => String(s).replace(/[0-9+\-−=()pkLUn]/g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"["0123456789".indexOf(c)] || { "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", p: "ᵖ", k: "ᵏ", L: "ᴸ", U: "ᵁ", n: "ⁿ" }[c]);
+
+  /** Narrated walkthrough videos of a tab (from videos/videos.json via build_modules.py): a collapsed player with how-to text. */
+  UI.videos = function (list) {
+    if (!list || !list.length) return null;
+    const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return el("div", { class: "videos" }, list.map(v => el("details", { class: "video" },
+      el("summary", {}, el("span", { class: "vtitle" }, "▶ Video walkthrough: " + v.title), el("span", { class: "vlen" }, mmss(v.duration))),
+      el("p", { class: "howto" }, v.howto),
+      el("video", { controls: "", preload: "none", playsinline: "", src: "videos/" + v.file }),
+      el("p", { class: "vlinks", html: `<a href="videos/${v.file}" target="_blank" rel="noopener">Open the video in a new tab</a>` +
+        (v.slides ? ` · <a href="videos/${v.slides}" target="_blank" rel="noopener">Slides (PDF)</a> (slides ${v.first_slide}–${v.last_slide})` : "") }))));
+  };
+
   /* ---------- page ---------- */
   UI.page = function (cfg) {
     document.title = cfg.title;
@@ -1020,9 +1048,16 @@ const UI = (() => {
       const m = mods.find(m => m.id === id) || mods[0];
       [...tabs.children].forEach(b => b.setAttribute("aria-selected", b.dataset.id === m.id ? "true" : "false"));
       [...host.children].forEach(c => c.hidden = c.dataset.id !== m.id);
+      if (!state[m.id] && m.embed) {   // a tab that shows another course page (one of the explorers) in full width
+        const frame = el("iframe", { src: m.embed, title: m.title, loading: "lazy" });
+        const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(640, d.documentElement.scrollHeight + 4) + "px"; } catch (e) {} };
+        frame.addEventListener("load", () => { fit(); try { new ResizeObserver(fit).observe(frame.contentDocument.body); } catch (e) {} });
+        host.append(el("section", { class: "module full", "data-id": m.id }, el("div", { class: "panel embed" }, UI.videos((cfg.videos || {})[m.id]), frame)));
+        state[m.id] = { draw: () => {} };
+      }
       if (!state[m.id]) {
         const plots = el("div", { class: "plots" }), ctrls = el("div", { class: "ctrls" }), desc = el("div", { class: "desc" });
-        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
+        const sec = el("section", { class: "module", "data-id": m.id }, el("div", { class: "panel plots-col" }, UI.videos((cfg.videos || {})[m.id]), plots, desc), el("div", { class: "panel ctrls" }, el("h2", {}, m.title), ctrls));
         host.append(sec);
         desc.innerHTML = (m.desc || "") + (m.tries ? "<p><b>Try this</b></p><ul>" + m.tries.map(t => `<li>${t}</li>`).join("") + "</ul>" : "") + (m.ref ? `<p class="ref">${m.ref}</p>` : "");
         const ctx = {
@@ -1054,13 +1089,13 @@ const UI = (() => {
   return UI;
 })();
 
-const PAGE = {"title": "Nonlinear Equations", "sub": "Heath Chapter 5 \u00b7 CSc 302 meetings 17\u201319 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>"};
+const PAGE = {"title": "Nonlinear Equations", "sub": "Heath Chapter 5 \u00b7 interactive modules", "footer": "<div class=\"fl\"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 \u00b7 J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 \u00b7 S. Boyd and L. Vandenberghe, <a href=\"https://web.stanford.edu/~boyd/vmls/\"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class=\"fl\"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div>", "links": "<span class=\"nav\"><a href=\"index.html\">Interactive modules</a> \u00b7 <a href=\"csc302_info.html\">CSc 302 Info</a> \u00b7 <a href=\"csc303_info.html\">CSc 303 Info</a> \u00b7 <a href=\"multivariable_calculus.html\">Calc pages</a> \u00b7 <a href=\"unit_summaries.html\">Unit summaries</a></span>", "videos": {}};
 /* Chapter 5 modules: bisection, fixed-point iteration, Newton, secant, inverse quadratic interpolation,
    linear fractional interpolation (1-D) and Newton / Broyden for 2 × 2 systems. Heath §5.4-5.6. */
 (() => {
   const fmt = N.fmt, el = UI.el;
   const P = {   // presets: f, plot range, starting values per method
-    heath: { name: "x² − 4 sin x (Heath Examples 5.7–5.14)", f: "x^2 - 4*sin(x)", r: [0.5, 3.5], bisect: [1, 3], newton: [3], secant: [1, 3], iqi: [1, 2, 3] },
+    heath: { name: "x² − 4 sin x", f: "x^2 - 4*sin(x)", r: [0.5, 3.5], bisect: [1, 3], newton: [3], secant: [1, 3], iqi: [1, 2, 3] },
     mid: { name: "x³ − 2x − 5", f: "x^3 - 2*x - 5", r: [1, 3.5], bisect: [2, 3], newton: [2], secant: [2, 3], iqi: [2, 2.5, 3] },
     cosx: { name: "cos x − x", f: "cos(x) - x", r: [-0.5, 1.5], bisect: [0, 1], newton: [1], secant: [0, 1], iqi: [0, 0.5, 1] },
     dbl: { name: "(x − 1)²(x + 2): double root at 1", f: "(x-1)^2*(x+2)", r: [-0.2, 2.6], bisect: [0, 2], newton: [2.5], secant: [2.5, 2.3], iqi: [2.5, 2.2, 2] },
@@ -1069,38 +1104,38 @@ const PAGE = {"title": "Nonlinear Equations", "sub": "Heath Chapter 5 \u00b7 CSc
     pole: { name: "1/x − 0.5 (vertical and horizontal asymptotes)", f: "1/x - 0.5", r: [0.05, 6], bisect: [0.5, 5], newton: [5], secant: [4, 5], iqi: [0.5, 4, 5] },
   };
   const FP = {
-    g2: { name: "g(x) = √(x + 2)  (Heath Example 5.8)", g: "sqrt(x + 2)", r: [0, 3.2], x0: 0.5 },
+    g2: { name: "g(x) = √(x + 2)", g: "sqrt(x + 2)", r: [0, 3.2], x0: 0.5 },
     g3: { name: "g(x) = 1 + 2/x", g: "1 + 2/x", r: [0.8, 3.5], x0: 1 },
     g4: { name: "g(x) = (x² + 2)/(2x − 1)  (Newton's g)", g: "(x^2 + 2)/(2*x - 1)", r: [1, 3.5], x0: 3 },
     g1: { name: "g(x) = x² − 2  (diverges)", g: "x^2 - 2", r: [-2.5, 3.5], x0: 2.1 },
     cos: { name: "g(x) = cos x", g: "cos(x)", r: [0, 1.2], x0: 0.1 },
   };
   const INFO = {
-    bisect: { title: "Interval bisection", ref: "Heath §5.5.1 · Algorithm 5.1 · Example 5.7", rate: "linear, constant ½ for the bracket length",
+    bisect: { title: "Interval bisection", ref: "Heath §5.5.1 · Algorithm 5.1", rate: "linear, constant ½ for the bracket length",
       desc: `<p>Bisection keeps a bracket [a, b] with a sign change, evaluates f at the midpoint and keeps the half that still contains a sign change.
         The bracket length halves at every step, so after k steps it is (b − a)/2ᵏ: guaranteed but slow — about 3.3 steps per decimal digit, regardless of f.</p>`,
       tries: ["Compute in advance how many steps give a bracket shorter than 10⁻⁶ on [2, 3], then check.", "Try the double root: f does not change sign at x = 1, so bisection can't be started there."] },
-    newton: { title: "Newton's method", ref: "Heath §5.5.3 · Algorithm 5.2 · Examples 5.10–5.11",
+    newton: { title: "Newton's method", ref: "Heath §5.5.3 · Algorithm 5.2",
       desc: `<p>Newton's method replaces f by its tangent line at xₖ and takes the zero of the tangent: xₖ₊₁ = xₖ − f(xₖ)/f′(xₖ). Near a simple root the error is roughly squared at every step
         (quadratic convergence: the number of correct digits doubles). At a multiple root it is only linear, and from a poor starting guess it can overshoot, cycle or diverge.</p>`,
-      tries: ["Heath's example from x₀ = 3: count the correct digits in each step.", "Double root: the rate column settles at 1 and the ratio at ½.", "arctan from x₀ = 1.5: the tangents throw the iterates farther out each time. Try x₀ = 1.3.", "x³ − 2x + 2 from x₀ = 0: a 2-cycle."] },
-    secant: { title: "Secant method", ref: "Heath §5.5.4 · Algorithm 5.3 · Example 5.12",
+      tries: ["x² − 4 sin x from x₀ = 3: count the correct digits in each step.", "Double root: the rate column settles at 1 and the ratio at ½.", "arctan from x₀ = 1.5: the tangents throw the iterates farther out each time. Try x₀ = 1.3.", "x³ − 2x + 2 from x₀ = 0: a 2-cycle."] },
+    secant: { title: "Secant method", ref: "Heath §5.5.4 · Algorithm 5.3",
       desc: `<p>The secant method replaces the derivative in Newton's method by the slope through the last two iterates. It needs one new function value per step and no derivative,
         and near a simple root converges superlinearly with order r = (1 + √5)/2 ≈ 1.618.</p>`,
-      tries: ["Heath's example from x₀ = 1, x₁ = 3 (Example 5.12).", "Compare the rate column with 1.618.", "Per function evaluation, compare with Newton (which needs f and f′ each step)."] },
-    iqi: { title: "Inverse quadratic interpolation", ref: "Heath §5.5.5 · Example 5.13",
+      tries: ["x² − 4 sin x from x₀ = 1, x₁ = 3.", "Compare the rate column with 1.618.", "Per function evaluation, compare with Newton (which needs f and f′ each step)."] },
+    iqi: { title: "Inverse quadratic interpolation", ref: "Heath §5.5.5",
       desc: `<p>Fit x as a quadratic function of y through the last three points (xᵢ, f(xᵢ)) and evaluate it at y = 0 (the sideways parabola in the plot).
         This avoids the difficulties of regular quadratic interpolation (no real roots, choosing a root) and converges with order about 1.839. It is the fast step inside Brent's method (fzero, brentq).</p>`,
-      tries: ["Heath's example with 1, 2, 3 (Example 5.13).", "Watch which three points are used: the oldest one is dropped each step."] },
-    linfrac: { title: "Linear fractional interpolation", ref: "Heath §5.5.6 · Example 5.14",
+      tries: ["x² − 4 sin x with 1, 2, 3.", "Watch which three points are used: the oldest one is dropped each step."] },
+    linfrac: { title: "Linear fractional interpolation", ref: "Heath §5.5.6",
       desc: `<p>Fit φ(x) = (x − u)/(vx − w) through the last three points; its zero x = u is the next iterate. Such a function has a vertical and a horizontal asymptote,
         so this method handles functions with poles or flat tails where tangent and secant lines fail. Asymptotic order ≈ 1.839, like inverse quadratic interpolation.</p>`,
-      tries: ["Heath's example with 1, 2, 3 (Example 5.14).", "1/x − 0.5 from 0.5, 4, 5: exact in one step (the function is itself a linear fraction); Newton from 5 diverges."] },
-    fixed: { title: "Fixed-point iteration", ref: "Heath §5.5.2 · Examples 5.8–5.9",
+      tries: ["x² − 4 sin x with 1, 2, 3.", "1/x − 0.5 from 0.5, 4, 5: exact in one step (the function is itself a linear fraction); Newton from 5 diverges."] },
+    fixed: { title: "Fixed-point iteration", ref: "Heath §5.5.2",
       desc: `<p>Rewrite f(x) = 0 as x = g(x) and iterate xₖ₊₁ = g(xₖ). The cobweb plot alternates between the curve y = g(x) and the diagonal y = x.
         Near a fixed point x* the error is multiplied by about g′(x*) each step: the iteration converges if |g′(x*)| &lt; 1 (monotonically if 0 &lt; g′ &lt; 1, oscillating if −1 &lt; g′ &lt; 0),
         and quadratically if g′(x*) = 0, as for Newton's g.</p>`,
-      tries: ["All four rewritings of x² − x − 2 = 0 from Heath Example 5.8: which converge, and at what rate (compare with |g′(2)|)?", "g(x) = 1 + 2/x: g′(2) = −½, so the cobweb spirals.", "Newton's g has g′(2) = 0: quadratic."] },
+      tries: ["All four rewritings of x² − x − 2 = 0: which converge, and at what rate (compare with |g′(2)|)?", "g(x) = 1 + 2/x: g′(2) = −½, so the cobweb spirals.", "Newton's g has g′(2) = 0: quadratic."] },
   };
 
   function rootModule(kind) {
@@ -1198,7 +1233,7 @@ const PAGE = {"title": "Nonlinear Equations", "sub": "Heath Chapter 5 \u00b7 CSc
 
   const SYS = {
     circ: { name: "x² + y² = 4, xy = 1", f1: "x^2 + y^2 - 4", f2: "x*y - 1", x0: [2, 1], r: [-3, 3, -2.5, 2.5] },
-    heath: { name: "x + 2y = 2, x² + 4y² = 4 (Heath Examples 5.15–5.16)", f1: "x + 2*y - 2", f2: "x^2 + 4*y^2 - 4", x0: [1, 2], r: [-2.5, 2.5, -1.5, 2.5] },
+    heath: { name: "x + 2y = 2, x² + 4y² = 4", f1: "x + 2*y - 2", f2: "x^2 + 4*y^2 - 4", x0: [1, 2], r: [-2.5, 2.5, -1.5, 2.5] },
     midB: { name: "x² − y = 1, x + y² = 3", f1: "x^2 - y - 1", f2: "x + y^2 - 3", x0: [1, 1], r: [-3, 3, -3, 3] },
     trig: { name: "sin x + y² = 1, x² − y = 0.5", f1: "sin(x) + y^2 - 1", f2: "x^2 - y - 0.5", x0: [0.5, 0.5], r: [-2, 2, -1.5, 2] },
   };
@@ -1206,12 +1241,12 @@ const PAGE = {"title": "Nonlinear Equations", "sub": "Heath Chapter 5 \u00b7 CSc
     const broy = kind === "broyden";
     return {
       id: broy ? "broyden" : "newton-2d", title: broy ? "Broyden's method (2-D)" : "Newton's method (2-D)",
-      ref: broy ? "Heath §5.6.3 · Algorithm 5.5 · Example 5.16" : "Heath §5.6.2 · Algorithm 5.4 · Example 5.15 · Lab 10",
+      ref: broy ? "Heath §5.6.3 · Algorithm 5.5" : "Heath §5.6.2 · Algorithm 5.4",
       desc: broy ? `<p>Broyden's method keeps an approximate Jacobian Bₖ and updates it after each step by the smallest change that matches the secant condition Bₖ₊₁sₖ = F(xₖ₊₁) − F(xₖ):
           Bₖ₊₁ = Bₖ + (yₖ − Bₖsₖ)sₖᵀ/(sₖᵀsₖ). No derivatives are evaluated after the start, each step costs one evaluation of F, and convergence is superlinear.</p>`
         : `<p>The two curves are the zero sets of f₁ (blue) and f₂ (green); their crossings are the solutions. Newton's method linearizes both equations at xₖ, solves J(xₖ)sₖ = −F(xₖ) and steps to xₖ₊₁ = xₖ + sₖ.
           Drag the starting point; with a good start the error is squared each step (quadratic convergence), with a bad one the iterates may land near another solution or wander off.</p>`,
-      tries: broy ? ["Heath Example 5.16 from (1, 2) with B₀ = J(x₀): compare the iterates with Newton's tab.", "Start from B₀ = I: it still converges, but more slowly at first."] :
+      tries: broy ? ["From (1, 2) with B₀ = J(x₀): compare the iterates with Newton's tab.", "Start from B₀ = I: it still converges, but more slowly at first."] :
         ["From (2, 1): check the first step by hand.", "Drag the start around: which solution does each region of starting points reach?", "Start where the Jacobian is singular (e.g. on the line y = x for this system)."],
       init(ctx) {
         const plot = ctx.plot("Zero curves of f₁ (blue) and f₂ (green); drag the start", { aspect: "16 / 11", equal: true }), conv = ctx.plot("Error ‖xₖ − x*‖ (or ‖F(xₖ)‖)", { aspect: "16 / 6", logy: true });

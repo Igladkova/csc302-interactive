@@ -1,0 +1,24 @@
+{
+ "ch04_demo1_power_inverse_iteration.mp4": {
+  "title": "Demo 1: Power and inverse iteration",
+  "page": "ch04_eigenvalues",
+  "tab": "power-inverse",
+  "howto": "Open this tab next to the video. The video shows how to use the controls, explains power, inverse and Rayleigh quotient iteration, and then runs six experiments in the demo with what you should see. Pause it to try each one yourself.",
+  "duration": 377,
+  "slides": "ch04_demo1_power_inverse.pdf",
+  "first_slide": 1,
+  "last_slide": 12,
+  "deck": "ch04_eigenvalues/demo1_power_inverse"
+ },
+ "ch04_demo2_qr_iteration_shifts.mp4": {
+  "title": "Demo 2: QR iteration with shifts",
+  "page": "ch04_eigenvalues",
+  "tab": "qr-iteration",
+  "howto": "Open this tab next to the video. The video shows how to use the controls, explains QR iteration and its shifts, and then runs experiments with and without shifts in the demo. Pause it to try each one yourself.",
+  "duration": 355,
+  "slides": "ch04_demo2_qr_iteration.pdf",
+  "first_slide": 1,
+  "last_slide": 12,
+  "deck": "ch04_eigenvalues/demo2_qr_iteration"
+ }
+}

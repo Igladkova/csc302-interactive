@@ -80,6 +80,19 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 @media (max-width: 880px) { .module { grid-template-columns: minmax(0, 1fr) } }
 @media (max-width: 560px) { .plotbox.half { grid-column: 1 / -1 } }
 
+/* walkthrough videos (UI.videos) */
+.videos { margin: 0 0 12px }
+.video { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 8px }
+.video summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-weight: 600; color: var(--focus) }
+.video .vlen { font: 600 0.8rem var(--mono); color: var(--muted) }
+.video .howto { font-size: 0.9rem; margin: 8px 0 }
+.video video { width: 100%; border-radius: 6px; background: #000; display: block }
+.video .vlinks { font-size: 0.85rem; margin: 6px 0 0 }
+
+/* tabs that show another course page in full width (module.embed) */
+.module.full { grid-template-columns: minmax(0, 1fr) }
+.panel.embed iframe { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: 6px }
+
 .wrap > * { min-width: 0 }
 .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; min-width: 0 }
 .box > h2 { font-size: 1.15rem; margin: 0 0 10px }
@@ -106,7 +119,7 @@ header.infohead .nav { margin: 0 }
 </head>
 <body>
 <div class="wrap">
-<header class="infohead"><div><h1>Review: Taylor series and Taylor polynomials</h1><p class="sub">Prerequisite review · Stewart §11.10–11.11 · used from CSc 302 meeting 1</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
+<header class="infohead"><div><h1>Review: Taylor series and Taylor polynomials</h1><p class="sub">Prerequisite review · Stewart §11.10–11.11</p></div><p class="nav"><a href="index.html">Interactive modules</a> · <a href="csc302_info.html">CSc 302 Info</a> · <a href="multivariable_calculus.html">Calc pages</a> · <a href="unit_summaries.html">Unit summaries</a></p></header>
 
 <section class="box">
 <h2>Learning objectives</h2>
@@ -116,7 +129,7 @@ header.infohead .nav { margin: 0 }
   <li>Bound the remainder \(R_n = f - T_n\) with Taylor's Inequality or the Alternating Series Estimation Theorem.</li>
   <li>Predict how the error changes when the distance \(h = |x - a|\) or the degree \(n\) changes.</li>
 </ul>
-<p class="note">This page reviews material from Calculus II (Stewart §11.10–11.11) that CSc 302 uses from meeting 1 on. Read it before the first class.</p>
+<p class="note">This page reviews material from Calculus II (Stewart §11.10–11.11) that CSc 302 uses from the start. Read it before the first class.</p>
 </section>
 
 <section class="box">
@@ -205,11 +218,11 @@ The actual error is \(e^{0.3} - 1.3495 = 3.59\times10^{-4}\), inside the bound.<
 <section class="box">
 <h2>3. Why CSc 302 needs this</h2>
 <ul>
-  <li><b>Truncation vs rounding.</b> Every approximation in the course is a truncated series plus floating-point rounding. The two errors pull in opposite directions as \(h\) shrinks (meetings 1–3; <a href="ch01_floating-point.html#rounding-truncation">Rounding vs truncation error</a>; Lab 2).</li>
-  <li><b>Conditioning.</b> \(T_1\) gives \(f(x + \Delta x) - f(x) \approx f'(x)\Delta x\), the source of the condition number \(|x f'(x)/f(x)|\) (meeting 2).</li>
-  <li><b>Several variables.</b> The tangent plane and the multivariable Taylor expansion are the same idea in two variables (meeting 6; <a href="mv_several-variables.html#tangent-plane">Tangent plane tab</a>).</li>
-  <li><b>Newton's method.</b> Each step replaces \(f\) by \(T_1\) and solves \(T_1(x) = 0\) (meetings 17–19; <a href="ch05_nonlinear-equations.html#newton">Newton's method tab</a>).</li>
-  <li><b>Finite differences and quadrature.</b> Error formulas such as \(\frac{f(x+h) - f(x)}{h} = f'(x) + \frac h2 f''(z)\) come straight from \(T_1\) and the Lagrange remainder (meetings 5, 26–28; <a href="ch08_integration-differentiation.html#finite-differences">Finite differences tab</a>).</li>
+  <li><b>Truncation vs rounding.</b> Every approximation in the course is a truncated series plus floating-point rounding. The two errors pull in opposite directions as \(h\) shrinks (<a href="ch01_floating-point.html#rounding-truncation">Rounding vs truncation error</a>).</li>
+  <li><b>Conditioning.</b> \(T_1\) gives \(f(x + \Delta x) - f(x) \approx f'(x)\Delta x\), the source of the condition number \(|x f'(x)/f(x)|\).</li>
+  <li><b>Several variables.</b> The tangent plane and the multivariable Taylor expansion are the same idea in two variables (<a href="mv_several-variables.html#tangent-plane">Tangent plane tab</a>).</li>
+  <li><b>Newton's method.</b> Each step replaces \(f\) by \(T_1\) and solves \(T_1(x) = 0\) (<a href="ch05_nonlinear-equations.html#newton">Newton's method tab</a>).</li>
+  <li><b>Finite differences and quadrature.</b> Error formulas such as \(\frac{f(x+h) - f(x)}{h} = f'(x) + \frac h2 f''(z)\) come straight from \(T_1\) and the Lagrange remainder (<a href="ch08_integration-differentiation.html#finite-differences">Finite differences tab</a>).</li>
 </ul>
 <p class="note">Try it: the <a href="ch07_interpolation.html#taylor">Taylor interpolation tab</a> plots \(T_n\) for any function and center, with its error.</p>
 </section>
@@ -228,7 +241,7 @@ The actual error is \(e^{0.3} - 1.3495 = 3.59\times10^{-4}\), inside the bound.<
 </ol>
 </section>
 
-<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
+<footer><div class="fl"><b>Textbooks:</b> M. T. Heath, <i>Scientific Computing: An Introductory Survey</i>, revised 2nd ed., SIAM, 2018 · J. Stewart, D. Clegg and S. Watson, <i>Calculus: Early Transcendentals</i>, 9th ed., Cengage, 2021 · S. Boyd and L. Vandenberghe, <a href="https://web.stanford.edu/~boyd/vmls/"><i>Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares</i></a> (VMLS), Cambridge University Press, 2018.</div><div class="fl"><b>Disclaimer:</b> Original code written for CSc 302/303 (CCNY); numerics checked against NumPy and SciPy.</div></footer>
 </div>
 </body>
 </html>
